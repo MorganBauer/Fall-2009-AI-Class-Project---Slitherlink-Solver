@@ -1,4 +1,5 @@
-
+(in-package #:slitherlink)
+(in-suite slitherlink-tests)
 
 ;; I want to have cells with four edges, and the center number.
 ;; It would all be stored in an array,
@@ -38,9 +39,9 @@
   (faces edges vertices))
 
 (defclass face ()
-  ((number order)
-   (edge edges )
-   (vertex vertices)))
+  (( order)
+   ( edges )
+   (vertices)))
 
 (defclass edge ()
   (faces vertices))
@@ -67,6 +68,8 @@
           (format t "Please insert ~:r line" (1+ i))
           (split-sequence #\Space (read-line) :remove-empty-subseqs t))))
 
+
+
 (defconstant +offset+ 1)
 
 (defun print-board (board-dimension)
@@ -78,3 +81,4 @@
                      ((AND (zerop column) (evenp column))
                       (format t "~A " row)))))
      :do (format t "~%~%")))
+
