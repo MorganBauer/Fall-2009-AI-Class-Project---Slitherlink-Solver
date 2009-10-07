@@ -9,6 +9,7 @@
 ;;Maybe two arrays, one for the center, and one for the points
 
 
+;;;; Mathematical Observations
 ;;; This whole thing is very graph theory.
 
 ;; the whole 'game' is a grid. The grid has faces, edges, and points.
@@ -35,6 +36,9 @@
 
 ;;; This reminds me of some of the rendering techniques and such used to determine whether we are inside or outside of a polygon.
 
+;;;; Classes
+;;;These class declarations are nowhere near complete and are just a basic structure to maybe hang ideas upon.
+
 (defclass grid ()
   (faces edges vertices))
 
@@ -49,36 +53,95 @@
 (defclass vertex ()
   (faces edges))
 
-;;; This sucks, but it should work for initializing elements into an array
-(defun basic-initialize-array (array)
-  ((loop :for i :from 0 :to 8
-      :do (loop :for j :from 0 :to 8
-             :do (cond ((and (evenp i) (evenp j)); fill in vertexes
-                        (setf (aref array i j) #\*))
-                       ((and (evenp i) (oddp j)); fill in top/bottom edges
-                        (setf (aref array i j) #\|))
-                       ((and (oddp i) (evenp j)); fill in left/right lines
-                        (setf (aref array i j) #\|))
-                       ((and (oddp i) (oddp j)) ; fill in faces
-                        (setf (aref array i j) #\0)))))))
+;; Maybe a board class to hold an array? But what else can it hold?
+;; The array contains a structured edition of the game board
+;; so it can be printed out easily
+(defclass board ()
+  (array))
 
+
+;;; This sucks, but it should work for initializing elements into an array
+(defun basic-initialize-board (board)
+  (loop :for i :from 0 :to (1- (array-dimension board 0))
+     :do (loop :for j :from 0 :to (1- (array-dimension board 1))
+            :do (cond ((and (evenp i) (evenp j)); fill in vertexes
+                       (setf (aref board i j) #\*))
+                      ((and (evenp i) (oddp j)); fill in top/bottom edges
+                       (setf (aref board i j) #\-))
+                      ((and (oddp i) (evenp j)); fill in left/right lines
+                       (setf (aref board i j) #\|))
+                      ((and (oddp i) (oddp j)) ; fill in faces
+                       (setf (aref board i j) #\Space))))))
+
+
+
+
+
+
+
+(defconstant +offset+ 1)
+
+(defun print-board (board)
+  (let ((board-dimension-x (array-dimension board 0))
+        (board-dimension-y (array-dimension board 1)))
+    (loop :for row :from 0 :to (+ board-dimension-x +offset+)
+       :do (loop :for column :from 0 :to (+ board-dimension-y +offset+)
+              :do (progn
+                    (cond ((AND (zerop row) (evenp row))
+                           (format t "~A" (/ column 2)))
+                          ((AND (zerop column) (evenp column))
+                           (format t "~A" (/ row 2))))))
+       :do (format t "~&")))
+  )
+
+;;; Read in a board from the user
 (defun read-game ()
   (loop :for i = 0 :then (1+ i)
      do (progn
           (format t "Please insert ~:r line" (1+ i))
           (split-sequence #\Space (read-line) :remove-empty-subseqs t))))
 
+;;; Read in a board from a file
+(defun read-board-from-file (filename)
+  (with-open-file (file-stream filename :direction :input)
+    (let* ((board-size (split-sequence #\Space (read-line file-stream) :remove-empty-subseqs t)) ;we are reading the first line for the dimensions of the board.
+           (height (parse-integer (cadr board-size))))
+      (loop for i from 1 to height
+         do (format t "Reading ~:r line...~&" i)
+         collecting (read-line file-stream)))))
+
+(test read-board-from-file
+  (is (equal (read-board-from-file "game1.txt")
+             '("3 3"
+               "0 0"))
+      (equal (read-board-from-file "game2.txt")
+             '("n n n 2 0"
+               "2 3 2 n 2"
+               "2 1 n 3 n"
+               "n 1 2 n 3"
+               "n 2 n n n"))))
 
 
-(defconstant +offset+ 1)
+;;; Parse the board read in from file or user.
 
-(defun print-board (board-dimension)
-  (loop :for row :from 0 :to (* board-dimension 2)
-     :do (loop :for column :from 0 :to (* board-dimension 2)
-            :do (progn
-                 (cond ((AND (zerop row) (evenp row))
-                      (format t "~A " column))
-                     ((AND (zerop column) (evenp column))
-                      (format t "~A " row)))))
-     :do (format t "~%~%")))
+;; Count out edges
+;;; use when traversing blindly (or not?)
+;; if out edges if out edges are  two (not including the in edge) or more OR more than 3 (including the in edge), then fail and backtrack. It is not clear which case would be better to optimize for
+
+;; (out-breadth vertex) => a number n from 0 to 4, or 1 to 3, or something
+
+;; a function that coounts the crossings when moving ACROSS the board
+;; must have an even number of crossings
+;; application of even-odd rule
+
+
+;;; Theoretically I want test-game funciton that we give it a name, and a test games function where we gice it a list of games.
+(test game1
+  "Checks if game1 can be solved"
+  (is (= (solve "game1.txt") (parse-solution "game1solution.txt"))))
+
+(test game2
+  "Checks if game2 can be solved"
+  (is (= (solve "game2.txt") (parse-solution "game2solution.txt"))))
+
 

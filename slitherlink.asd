@@ -7,9 +7,9 @@
 
 (defsystem #:slitherlink
   :name "Slitherlink"
-  :author "Morgan Bauer <bauer.morgan@gmail.com>"
-  :author "Dana Preble <@gmail.com>"
+  :author "Morgan Bauer <mhb@cise.ufl.edu>"
+  :author "Dana Preble <d.e.preble@gmail.com>"
   :serial t ;files load in order
   :components ((:file "packages")
                (:file "slitherlink"))
-  :depends-on ("fiveam"))
+  :depends-on ("fiveam" "split-sequence"))

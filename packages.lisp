@@ -2,7 +2,8 @@
 
 (defpackage #:slitherlink
   (:use #:common-lisp
-        #:it.bese.FiveAM))
+        #:it.bese.FiveAM
+        #:split-sequence))
 
 (in-package #:slitherlink)
 
