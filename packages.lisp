@@ -1,11 +1,12 @@
 (in-package #:cl-user)
 
-(defpackage #:slitherlink
+(defpackage #:slither
   (:use #:common-lisp
-        #:it.bese.FiveAM
-        #:split-sequence))
+        #:split-sequence
+        ;#:it.bese.FiveAM
+        ))
 
-(in-package #:slitherlink)
+(in-package #:slither)
 
-(def-suite slitherlink-tests :description "Main test-suite.")
-(in-suite slitherlink-tests)
+;(def-suite slither-tests :description "Main test-suite.")
+;(in-suite slither-tests)

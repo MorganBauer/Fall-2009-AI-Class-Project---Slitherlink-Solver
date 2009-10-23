@@ -1,6 +1,14 @@
-(in-package #:slitherlink)
-(in-suite slitherlink-tests)
+(in-package #:slither)
+;;(in-suite slither-tests)
 
+
+(defun slither ()
+  "Game goes here"
+  (format t "Welcome to slither")
+  (y-or-n-p "Play slither?"))
+
+
+  
 ;; I want to have cells with four edges, and the center number.
 ;; It would all be stored in an array,
 ;; the array for a 5x5 of numbers in the boxes needed, is (2*n + 1) for each side,
@@ -41,6 +49,11 @@
 ;; Must be one single continuous loop (out-degree of each vertex is 2)
 ;; Must not violate the numbers
 
+(defun constraint-checker ()
+  (if (OR (not-continuous-loop) (violates-numbers-p))
+      (keep-playing)
+      (:GAME-WIN)))
+
 ;;;; Classes
 ;;;These class declarations are nowhere near complete and are just a basic structure to maybe hang ideas upon.
 
@@ -56,7 +69,7 @@
   (faces vertices))
 
 (defclass vertex ()
-;;   (faces edges))
+  (faces edges))
 
 ;; Maybe a board class to hold an array? But what else can it hold?
 ;; The array contains a structured edition of the game board
@@ -77,8 +90,6 @@
                        (setf (aref board i j) #\|))
                       ((and (oddp i) (oddp j)) ; fill in faces
                        (setf (aref board i j) #\Space))))))
-
-
 
 (defconstant +offset+ 1)
 
@@ -114,6 +125,15 @@
                            (split-sequence #\x (read-line) :remove-empty-subseqs t))))
     (cons (car dimensions) (cadr dimensions))))
 
+
+
+;;; Loop
+(defun loop-until-file-exists ()
+  (loop for filename = (read-line)
+     until (probe-file filename)
+     do (format t "Incorrect file name")
+     finally (return filename)))
+
 ;;; Read in a board from a file
 (defun read-board-from-file (filename)
   (with-open-file (file-stream filename :direction :input)
@@ -126,43 +146,79 @@
 
 ;; Tests for reading game form a file
 
-(test read-board-from-file
-  (is (equal (MULTIPLE-VALUE-LIST (read-board-from-file "game1.txt"))
-             '((2 2)
-               ("3 3"
-                "0 0")))
-      (equal (MULTIPLE-VALUE-LIST (read-board-from-file "game2.txt"))
-             '((5 5)
-               ("n n n 2 0"
-                "2 3 2 n 2"
-                "2 1 n 3 n"
-                "n 1 2 n 3"
-                "n 2 n n n")))))
+(defun test-read-board-from-file ()
+  (AND (equal (MULTIPLE-VALUE-LIST (read-board-from-file "game1.txt"))
+              '((2 2)
+                ("3 3"
+                 "n n")))
+       (equal (MULTIPLE-VALUE-LIST (read-board-from-file "game2.txt"))
+              '((5 5)
+                ("n n n 2 0"
+                 "2 3 2 n 2"
+                 "2 1 n 3 n"
+                 "n 1 2 n 3"
+                 "n 2 n n n")))))
 
-
+(defconstant +X+ 0)
+(defconstant +Y+ 1)
 ;; Parse the board read in from file or user.
+;; (multiple-value-list (read-board-from-file "game2.txt")
+
+(defun parse-board (dimensions strings)
+  (format t "~A" strings)
+  (let ((board (make-properly-sized-array dimensions)))
+    (loop :for row :from 0 :to (1- (array-dimension board +Y+))
+       :do (format t "row #~d~&" row)
+       :do (loop :for column :from 0 :to (1- (array-dimension board +X+))
+              :do (format t "column #~d~&" column)
+              :do (cond ((and (evenp row) (evenp column)); fill in vertexes
+                         (setf (aref board row column) #\*))
+                        ((and (oddp row) (oddp column))
+                         (setf (aref board row column)
+                               (if (parse-integer (nth (/ (1- column) 2)(split-sequence #\Space (nth (/ (1- row) 2) strings))) :junk-allowed t)
+                                   (parse-integer (nth (/ (1- column) 2)(split-sequence #\Space (nth (/ (1- row) 2) strings))) :junk-allowed t)
+                                   #\Space))
+                         (format t "~A" (split-sequence #\Space (nth (/ (1- row) 2) strings)))
+                         )
+                        )))
+    board))
+
+(defun make-properly-sized-array (dimensions)
+  (make-array (list (proper-size (car dimensions)) (proper-size (cadr dimensions))) :initial-element #\Space))
+
+(defun proper-size (dimension)
+  (1+ (* 2 dimension)))
 
 
-(defun parse-board (rows columns))
 
 
-  ;; Count out edges
+
+(defun print-board (board)
+  (loop :for row :from 0 :to (array-dimension board +Y+)
+     :do (loop :for column :from 0 :to (array-dimension board +X+)
+            :do (cond ((AND (< row 2) (< column 2))
+                       ())
+                      ((AND (> row 0) (> column 0))
+                       (format t "~A" (aref board (1- row) (1- column))))))
+     :do (format t "~&")))
+
+;;;; Count out-edges
 ;;; use when traversing blindly (or not?)
-  ;; if out edges if out edges are  two (not including the in edge) or more OR more than 3 (including the in edge), then fail and backtrack. It is not clear which case would be better to optimize for
+;; if out edges if out edges are  two (not including the in edge) or more OR more than 3 (including the in edge), then fail and backtrack. It is not clear which case would be better to optimize for
 
-  ;; (out-breadth vertex) => a number n from 0 to 4, or 1 to 3, or something
+;; (out-breadth vertex) => a number n from 0 to 4, or 1 to 3, or something
 
-  ;; a function that coounts the crossings when moving ACROSS the board
-  ;; must have an even number of crossings
-  ;; application of even-odd rule
+;; a function that coounts the crossings when moving ACROSS the board
+;; must have an even number of crossings
+;; application of even-odd rule
 
 
 ;;; Theoretically I want test-game funciton that we give it a name, and a test games function where we gice it a list of games.
-  (test game1
-    "Checks if game1 can be solved"
-    (is (= (solve "game1.txt") (parse-solution "game1solution.txt"))))
+;; (test game1
+;;       "Checks if game1 can be solved"
+;;       (is (= (solve "game1.txt") (parse-solution "game1solution.txt"))))
 
-  (test game2
-    "Checks if game2 can be solved"
-    (is (= (solve "game2.txt") (parse-solution "game2solution.txt"))))
+;; (test game2
+;;       "Checks if game2 can be solved"
+;;       (is (= (solve "game2.txt") (parse-solution "game2solution.txt"))))
 
