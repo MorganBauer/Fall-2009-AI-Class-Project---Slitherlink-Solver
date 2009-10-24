@@ -18,16 +18,20 @@
 
 
 (defun game-loop (board)
-  (format t "we are in the game-loop and should be playing the game")
+  ;(format t "Starting Game")
   (loop
      (print-board board)
      (loop for move = (query-move)
         do (setf move (parse-move move board))
         until move
         finally (place-move move board))
-     (check-board board)))
+     (if (check-board board)
+         (progn
+           (format t "You WIn!")
+           (return))
+         )))
 
-(defun check-board (board))
+                                        ;(defun check-board (board))
 
 
 (defun query-move ()
@@ -96,7 +100,7 @@
            (if (char= (aref board herex (1+ herey)) #\Space)
                (setf (aref board herex (1+ herey)) #\|)
                (setf (aref board herex (1+ herey)) #\Space))))))
-  
+
 
 ;; 1. print board
 ;; 2. query player for a position
@@ -265,9 +269,9 @@
   (let ((board (make-properly-sized-array dimensions)))
     (print (array-dimensions board))
     (loop :for row :from 0 :to (1- (array-dimension board +X+))
-       :do (format t "row #~d~&" row)
+       ;:do (format t "row #~d~&" row)
        :do (loop :for column :from 0 :to (1- (array-dimension board +Y+))
-              :do (format t "row# ~D column #~d~&" row column)
+              ;:do (format t "row# ~D column #~d~&" row column)
                                         ;:do (format t "~A~&" board )
               :do (cond ((and (evenp row) (evenp column)) ;+
                          (setf (aref board row column) #\+))
@@ -324,4 +328,126 @@
 ;; (test game2
 ;;       "Checks if game2 can be solved"
 ;;       (is (= (solve "game2.txt") (parse-solution "game2solution.txt"))))
+
+
+
+
+
+
+
+
+
+;; Check the numbers
+;; numbers are on the odd-odd pairs
+;; Then check all of the +s
+;; If the index of the add/sub is either negative or beyond the column or row length,
+;; disregard
+
+(defun check-board (view)
+  (let* ((dimensions (array-dimensions view))
+         (x-limit (car dimensions))
+         (y-limit (cadr dimensions))
+         (x 1)
+         (y 1)
+         (return-val T))
+    ;; First, check the numbers
+    (loop
+       (loop
+          (if (not (check-space y x view) )
+              (setf return-val nil))
+          (setf x (+ x 2))
+          (when (> x (- x-limit 1))
+            (progn
+              (setf x 1)
+              (return)) ))
+       (setf y (+ y 2))
+       (when (> y (- y-limit 1))
+         (progn
+           (setf y 1)
+           (return) )
+         )
+       ;; end of checking the spaces
+       )
+    ;; now check the pluses
+    (setf x 0)
+    (setf y 0)
+    ;; almost copypasta from before
+    (loop
+       (loop
+          (if (not (check-node y x view dimensions) )
+              (setf return-val nil)
+              )
+          (setf x (+ x 2))
+          (when (> x (- x-limit 1))
+            (progn
+              (setf x 0)
+              (return)
+              )
+            )
+          )
+       (setf y (+ y 2))
+       (when (> y (- y-limit 1))
+         (progn
+           (setf y 0)
+           (return) )
+         )
+       ;; end of checking the nodes
+       )
+    return-val
+    ))
+
+
+(defun check-space (y x view)
+  (let ((goal (aref view y x)))
+    ;(format t "goal = ~D~&" goal)
+    (if (not (characterp goal))
+        (progn
+          (let ((current (+
+                          (is-line (+ y 1) x view)
+                          (is-line (- y 1) x view)
+                          (is-line y (+ x 1) view)
+                          (is-line y (- x 1) view))))
+            ;(format t "goal = ~D current = ~D" goal current)
+            (if (= current goal) T nil)
+            ))
+    T )
+  ))
+
+;; Here is a bit more tricky.  Gotta see where we are.
+;; return true if current matches either goal or goal-two
+;; Ignore the corresponding side if the number is negative or out-of-bounds
+(defun check-node ( y x view dimensions)
+  (setf x-limit (- (car dimensions) 1) )
+  (setf y-limit (- (cadr dimensions) 1) )
+  (setf goal 0)
+  (setf goal-two 2)
+  (setf curent 0)
+  ;; if the x value is NOT less than zero, do the math.
+  (if (not (< (- x 1) 0 ) )
+      (setf curent (+ curent (is-line y (- x 1) view) ) ))
+  (if (not (< (- y 1) 0 ) )
+      (setf curent (+ curent (is-line (- y 1) x view) ) ))
+  (if (not (> (+ x 1) x-limit ) )
+      (setf curent (+ curent (is-line y (+ x 1) view) ) ))
+  (if (not (> (+ y 1) y-limit ) )
+      (setf curent (+ curent (is-line (+ y 1) x view) ) ) )
+
+  (if (or (= curent goal) (= curent goal-two) ) T nil)
+  )
+
+
+;; NEW FUNCTION
+;; is-line
+;; Pass in the position x in the row-major array
+;; If it is a line, return a 1
+(defun is-line ( y x view )
+  (setf ret-val 0)
+  ( if (char= #\| (character (aref view y x)))
+       (setf ret-val 1))
+  ( if (char= #\- (character (aref view y x)))
+       (setf ret-val 1))
+  ( if (char= #\Space (character (aref view y x)))
+       (setf ret-val 0))
+  ret-val
+  )
 
