@@ -1,6 +1,8 @@
 (in-package #:slither)
 ;;(in-suite slither-tests)
 
+(defconstant +X+ 0)
+(defconstant +Y+ 1)
 
 (defun slither ()
   "Game goes here"
@@ -18,20 +20,27 @@
 
 
 (defun game-loop (board)
-  ;(format t "Starting Game")
-  (loop
-     (print-board board)
-     (loop for move = (query-move)
-        do (setf move (parse-move move board))
-        until move
-        finally (place-move move board))
-     (if (check-board board)
-         (progn
-           (format t "You WIn!")
-           (return))
-         )))
+  ;;(format t "Starting Game")
+  (let ((moves nil))
+    (loop
+       (print-board board)
+       (loop for move = (query-move)
+          do (setf move (parse-move move board))
+          until move
+          finally (progn
+                    (push move moves)
+                    (place-move move board)))
+       (if (check-board board)
+           (progn
+             (format t "You WIn!")
+             (print-moves (nreverse moves))
+             (return)
+             )))))
 
-                                        ;(defun check-board (board))
+(defun print-moves (moves)
+  (format t "Your moves in order were:")
+  (loop for move in moves
+     :do (format t "~&   ~A~&" move)))
 
 
 (defun query-move ()
@@ -55,10 +64,10 @@
                  (if (= 1 (length (caddr possible-move)))
                      (valid-move-p (character (caddr possible-move)))
                      nil))
-            (progn (format t "we have a vaild move,maybe")
-                   (list (parse-integer (car possible-move))
-                         (parse-integer (cadr possible-move))
-                         (character (caddr possible-move))))
+            (progn ;(format t "we have a vaild move,maybe")
+              (list (parse-integer (car possible-move))
+                    (parse-integer (cadr possible-move))
+                    (character (caddr possible-move))))
             nil)
         nil)))
 
@@ -259,19 +268,17 @@
                  "n 1 2 n 3"
                  "n 2 n n n")))))
 
-(defconstant +X+ 0)
-(defconstant +Y+ 1)
 ;; Parse the board read in from file or user.
 ;; (multiple-value-list (read-board-from-file "game2.txt")
-
+ 
 (defun parse-board (dimensions strings)
-  (format t "~A" strings)
+                                        ;(format t "~A" strings)
   (let ((board (make-properly-sized-array dimensions)))
-    (print (array-dimensions board))
+                                        ;(print (array-dimensions board))
     (loop :for row :from 0 :to (1- (array-dimension board +X+))
-       ;:do (format t "row #~d~&" row)
+                                        ;:do (format t "row #~d~&" row)
        :do (loop :for column :from 0 :to (1- (array-dimension board +Y+))
-              ;:do (format t "row# ~D column #~d~&" row column)
+                                        ;:do (format t "row# ~D column #~d~&" row column)
                                         ;:do (format t "~A~&" board )
               :do (cond ((and (evenp row) (evenp column)) ;+
                          (setf (aref board row column) #\+))
@@ -281,14 +288,15 @@
                                (if (parse-integer (nth (/ (1- column) 2)(split-sequence #\Space (nth (/ (1- row) 2) strings))) :junk-allowed t)
                                    (parse-integer (nth (/ (1- column) 2)(split-sequence #\Space (nth (/ (1- row) 2) strings))) :junk-allowed t)
                                    #\Space))
-                         (format t "~A rsietnristrstanr" (split-sequence #\Space (nth (/ (1- row) 2) strings)))))))
+                                        ;(format t "~A rsietnristrstanr" (split-sequence #\Space (nth (/ (1- row) 2) strings)))
+                         ))))
     board))
 
 (defun make-properly-sized-array (dimensions)
   (make-array (list (proper-size (cadr dimensions)) (proper-size (car dimensions))) :initial-element #\Space))
 
 (defun proper-size (dimension)
-  (format t "proper-dimension is ~D~&" (1+ (* 2 dimension)))
+                                        ;(format t "proper-dimension is ~D~&" (1+ (* 2 dimension)))
   (1+ (* 2 dimension)))
 
 (defun print-board (board)
@@ -329,19 +337,20 @@
 ;;       "Checks if game2 can be solved"
 ;;       (is (= (solve "game2.txt") (parse-solution "game2solution.txt"))))
 
-
-
-
-
-
-
-
-
 ;; Check the numbers
 ;; numbers are on the odd-odd pairs
 ;; Then check all of the +s
 ;; If the index of the add/sub is either negative or beyond the column or row length,
 ;; disregard
+
+;;; Turn the following into a test for the board.
+;; (setf *answer-lines* (with-open-file (in "/home/morgan/Documents/programming/lisp/cl/slitherlink/game2solution.txt")
+;;                                 (loop for line = (read-line in nil nil)
+;;                                    while line
+;;                                    collect line into lines
+;;                                    finally (return lines))))
+;; (setf *answered-board* (make-array '(11 11) :initial-contents *answer-lines*))
+;; (check-board *answered-board*)
 
 (defun check-board (view)
   (let* ((dimensions (array-dimensions view))
@@ -389,17 +398,15 @@
        (when (> y (- y-limit 1))
          (progn
            (setf y 0)
-           (return) )
-         )
+           (return)))
        ;; end of checking the nodes
        )
-    return-val
-    ))
+    return-val))
 
 
 (defun check-space (y x view)
   (let ((goal (aref view y x)))
-    ;(format t "goal = ~D~&" goal)
+    ;;(format t "goal = ~D~&" goal)
     (if (not (characterp goal))
         (progn
           (let ((current (+
@@ -407,47 +414,43 @@
                           (is-line (- y 1) x view)
                           (is-line y (+ x 1) view)
                           (is-line y (- x 1) view))))
-            ;(format t "goal = ~D current = ~D" goal current)
-            (if (= current goal) T nil)
-            ))
-    T )
-  ))
+            ;;(format t "goal = ~D current = ~D" goal current)
+            (if (= current goal) T nil)))
+        T)))
 
 ;; Here is a bit more tricky.  Gotta see where we are.
 ;; return true if current matches either goal or goal-two
 ;; Ignore the corresponding side if the number is negative or out-of-bounds
 (defun check-node ( y x view dimensions)
-  (setf x-limit (- (car dimensions) 1) )
-  (setf y-limit (- (cadr dimensions) 1) )
-  (setf goal 0)
-  (setf goal-two 2)
-  (setf curent 0)
-  ;; if the x value is NOT less than zero, do the math.
-  (if (not (< (- x 1) 0 ) )
-      (setf curent (+ curent (is-line y (- x 1) view) ) ))
-  (if (not (< (- y 1) 0 ) )
-      (setf curent (+ curent (is-line (- y 1) x view) ) ))
-  (if (not (> (+ x 1) x-limit ) )
-      (setf curent (+ curent (is-line y (+ x 1) view) ) ))
-  (if (not (> (+ y 1) y-limit ) )
-      (setf curent (+ curent (is-line (+ y 1) x view) ) ) )
-
-  (if (or (= curent goal) (= curent goal-two) ) T nil)
-  )
+  (let ((x-limit (- (car dimensions) 1) )
+        (y-limit (- (cadr dimensions) 1) )
+        (goal 0)
+        (goal-two 2)
+        (curent 0))
+    ;; if the x value is NOT less than zero, do the math.
+    (if (not (< (- x 1) 0 ) )
+        (setf curent (+ curent (is-line y (- x 1) view))))
+    (if (not (< (- y 1) 0 ) )
+        (setf curent (+ curent (is-line (- y 1) x view))))
+    (if (not (> (+ x 1) x-limit ) )
+        (setf curent (+ curent (is-line y (+ x 1) view))))
+    (if (not (> (+ y 1) y-limit ) )
+        (setf curent (+ curent (is-line (+ y 1) x view))))
+    (if (or (= curent goal) (= curent goal-two) ) T nil)))
 
 
-;; NEW FUNCTION
-;; is-line
+;;;; is-line
 ;; Pass in the position x in the row-major array
 ;; If it is a line, return a 1
 (defun is-line ( y x view )
-  (setf ret-val 0)
-  ( if (char= #\| (character (aref view y x)))
-       (setf ret-val 1))
-  ( if (char= #\- (character (aref view y x)))
-       (setf ret-val 1))
-  ( if (char= #\Space (character (aref view y x)))
-       (setf ret-val 0))
-  ret-val
-  )
+  "Pass in the position x in the row-major array
+If it is a line, return a 1"
+  (let ((ret-val 0))
+    (if (char= #\| (character (aref view y x)))
+        (setf ret-val 1))
+    (if (char= #\- (character (aref view y x)))
+        (setf ret-val 1))
+    (if (char= #\Space (character (aref view y x)))
+        (setf ret-val 0))
+    ret-val))
 
