@@ -5,10 +5,47 @@
 (defun slither ()
   "Game goes here"
   (format t "Welcome to slither")
-  (y-or-n-p "Play slither?"))
+  (if (y-or-n-p "Play slither?")
+      (if (y-or-n-p "Load game automatically?(You can choose to load from a filename later)")
+          (progn
+            (format t "Loading game1.txt")
+            (probe-file "game1.txt")
+            (game-loop (multiple-value-call #'parse-board (read-board-from-file "game1.txt"))))
+          (progn
+            (format t "Please enter a file name (no quotes, e.g. game1.txt not \"game1.txt\")")
+            (game-loop (multiple-value-call #'parse-board (read-board-from-file (loop-until-file-exists)))))
+          )))
 
 
+(defun game-loop (board)
+  (format t "we are in the game-loop and should be playing the game")
+  (print-board board)
+  (loop until (parse-move (query-move))))
+
+
+(defun query-move ()
+  (format *query-io* "Where would you like to place a line?~&")
+  (format *query-io* "Moves must be in a triplet with a space as a delimiter: ")
+  (read-line *query-io*))
+
+(defun parse-move (string)
+  (declare (optimize (speed 1) (safety 1) (space 1)
+                     (compilation-speed 1) (debug 1))
+           (type string string))
+  (let ((possible-move (split-sequence #\Space string :remove-empty-subseqs t)))
+    (declare (type list possible-move))
+    (if (= 3 (length possible-move))
+        possible-move
+        nil)))
   
+
+;; 1. print board
+;; 2. query player for a position
+;;    Update board as result of position
+;; 3. checks
+
+
+
 ;; I want to have cells with four edges, and the center number.
 ;; It would all be stored in an array,
 ;; the array for a 5x5 of numbers in the boxes needed, is (2*n + 1) for each side,
@@ -83,10 +120,10 @@
   (loop :for i :from 0 :to (1- (array-dimension board 0))
      :do (loop :for j :from 0 :to (1- (array-dimension board 1))
             :do (cond ((and (evenp i) (evenp j)); fill in vertexes
-                       (setf (aref board i j) #\*))
-                      ((and (evenp i) (oddp j)); fill in top/bottom edges
+                       (setf (aref board i j) #\+))
+                      ((and (evenp i) (oddp j)); fill in top/bottom edges/lines
                        (setf (aref board i j) #\-))
-                      ((and (oddp i) (evenp j)); fill in left/right lines
+                      ((and (oddp i) (evenp j)); fill in left/right edges/lines
                        (setf (aref board i j) #\|))
                       ((and (oddp i) (oddp j)) ; fill in faces
                        (setf (aref board i j) #\Space))))))
@@ -129,7 +166,7 @@
 
 ;;; Loop
 (defun loop-until-file-exists ()
-  (loop for filename = (read-line)
+  (loop for filename = (read-line *query-io*)
      until (probe-file filename)
      do (format t "Incorrect file name")
      finally (return filename)))
@@ -167,37 +204,44 @@
 (defun parse-board (dimensions strings)
   (format t "~A" strings)
   (let ((board (make-properly-sized-array dimensions)))
-    (loop :for row :from 0 :to (1- (array-dimension board +Y+))
+    (print (array-dimensions board))
+    (loop :for row :from 0 :to (1- (array-dimension board +X+))
        :do (format t "row #~d~&" row)
-       :do (loop :for column :from 0 :to (1- (array-dimension board +X+))
-              :do (format t "column #~d~&" column)
-              :do (cond ((and (evenp row) (evenp column)); fill in vertexes
-                         (setf (aref board row column) #\*))
-                        ((and (oddp row) (oddp column))
+       :do (loop :for column :from 0 :to (1- (array-dimension board +Y+))
+              :do (format t "row# ~D column #~d~&" row column)
+              ;:do (format t "~A~&" board )
+              :do (cond ((and (evenp row) (evenp column)) ;+
+                         (setf (aref board row column) #\+))
+                        ((and (oddp row) (oddp column)) ;fill faces
                          (setf (aref board row column)
+                               ;if a number, fill a number otherwise, it is not a number so use a space
                                (if (parse-integer (nth (/ (1- column) 2)(split-sequence #\Space (nth (/ (1- row) 2) strings))) :junk-allowed t)
                                    (parse-integer (nth (/ (1- column) 2)(split-sequence #\Space (nth (/ (1- row) 2) strings))) :junk-allowed t)
                                    #\Space))
-                         (format t "~A" (split-sequence #\Space (nth (/ (1- row) 2) strings)))
-                         )
-                        )))
+                         (format t "~A rsietnristrstanr" (split-sequence #\Space (nth (/ (1- row) 2) strings)))))))
     board))
 
 (defun make-properly-sized-array (dimensions)
-  (make-array (list (proper-size (car dimensions)) (proper-size (cadr dimensions))) :initial-element #\Space))
+  (make-array (list (proper-size (cadr dimensions)) (proper-size (car dimensions))) :initial-element #\Space))
 
 (defun proper-size (dimension)
+  (format t "proper-dimension is ~D~&" (1+ (* 2 dimension)))
   (1+ (* 2 dimension)))
 
-
-
-
-
 (defun print-board (board)
-  (loop :for row :from 0 :to (array-dimension board +Y+)
-     :do (loop :for column :from 0 :to (array-dimension board +X+)
-            :do (cond ((AND (< row 2) (< column 2))
-                       ())
+  (format t "~&")
+  (loop :for row :from 0 :to (array-dimension board +X+)
+     :do (loop :for column :from 0 :to (array-dimension board +Y+)
+            :do (cond ((= row 0) ;if we are printing the first-line
+                       (cond ((OR (= column 0) (oddp column))
+                              (format t " "))
+                             ((evenp column)
+                              (format t "~D" (/ column 2)))))
+                      ((= column 0)
+                       (cond ((oddp row)
+                              (format t " "))
+                             ((evenp row)
+                              (format t "~D" (/ row 2)))))
                       ((AND (> row 0) (> column 0))
                        (format t "~A" (aref board (1- row) (1- column))))))
      :do (format t "~&")))
