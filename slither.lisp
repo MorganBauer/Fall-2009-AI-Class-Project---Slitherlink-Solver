@@ -19,8 +19,15 @@
 
 (defun game-loop (board)
   (format t "we are in the game-loop and should be playing the game")
-  (print-board board)
-  (loop until (parse-move (query-move))))
+  (loop
+     (print-board board)
+     (loop for move = (query-move)
+        do (setf move (parse-move move board))
+        until move
+        finally (place-move move board))
+     (check-board board)))
+
+(defun check-board (board))
 
 
 (defun query-move ()
@@ -28,15 +35,67 @@
   (format *query-io* "Moves must be in a triplet with a space as a delimiter: ")
   (read-line *query-io*))
 
-(defun parse-move (string)
+(defun parse-move (string board)
   (declare (optimize (speed 1) (safety 1) (space 1)
                      (compilation-speed 1) (debug 1))
            (type string string))
   (let ((possible-move (split-sequence #\Space string :remove-empty-subseqs t)))
     (declare (type list possible-move))
     (if (= 3 (length possible-move))
-        possible-move
+        (if (AND (if (numberp (parse-integer (car possible-move) :junk-allowed t))
+                     (allowable-board-x (parse-integer (car possible-move)) board)
+                     nil)
+                 (if (numberp (parse-integer (cadr possible-move) :junk-allowed t))
+                     (allowable-board-y (parse-integer (cadr possible-move)) board)
+                     nil)
+                 (if (= 1 (length (caddr possible-move)))
+                     (valid-move-p (character (caddr possible-move)))
+                     nil))
+            (progn (format t "we have a vaild move,maybe")
+                   (list (parse-integer (car possible-move))
+                         (parse-integer (cadr possible-move))
+                         (character (caddr possible-move))))
+            nil)
         nil)))
+
+
+(defun valid-move-p (char)
+  (loop for test in '(#\t #\b #\l #\r)
+     :until (char= (char-downcase char) test)
+     finally (return (char= (char-downcase char) test))))
+
+(defun allowable-board-x (x board)
+  (if (AND (> x 0)
+           (<= x (/ (1- (array-dimension board +X+)) 2)))
+      t
+      nil))
+
+(defun allowable-board-y (y board)
+  (if (AND (> y 0)
+           (<= y (/ (1- (array-dimension board +Y+)) 2)))
+      t
+      nil))
+
+(defun place-move (triplet board)
+  (let ((herex (1+ (* 2 (1- (car triplet)))))
+        (herey (1+ (* 2 (1- (cadr triplet)))))
+        (move (char-downcase (caddr triplet))))
+    (cond ((char= #\t move)
+           (if (char= (aref board (1- herex) herey) #\Space)
+               (setf (aref board (1- herex) herey) #\-)
+               (setf (aref board (1- herex) herey) #\Space)))
+          ((char= #\b move)
+           (if (char= (aref board (1+ herex) herey) #\Space)
+               (setf (aref board (1+ herex) herey) #\-)
+               (setf (aref board (1+ herex) herey) #\Space)))
+          ((char= #\l move)
+           (if (char= (aref board herex (1- herey)) #\Space)
+               (setf (aref board herex (1- herey)) #\|)
+               (setf (aref board herex (1- herey)) #\Space)))
+          ((char= #\r move)
+           (if (char= (aref board herex (1+ herey)) #\Space)
+               (setf (aref board herex (1+ herey)) #\|)
+               (setf (aref board herex (1+ herey)) #\Space))))))
   
 
 ;; 1. print board
@@ -209,12 +268,12 @@
        :do (format t "row #~d~&" row)
        :do (loop :for column :from 0 :to (1- (array-dimension board +Y+))
               :do (format t "row# ~D column #~d~&" row column)
-              ;:do (format t "~A~&" board )
+                                        ;:do (format t "~A~&" board )
               :do (cond ((and (evenp row) (evenp column)) ;+
                          (setf (aref board row column) #\+))
                         ((and (oddp row) (oddp column)) ;fill faces
                          (setf (aref board row column)
-                               ;if a number, fill a number otherwise, it is not a number so use a space
+                                        ;if a number, fill a number otherwise, it is not a number so use a space
                                (if (parse-integer (nth (/ (1- column) 2)(split-sequence #\Space (nth (/ (1- row) 2) strings))) :junk-allowed t)
                                    (parse-integer (nth (/ (1- column) 2)(split-sequence #\Space (nth (/ (1- row) 2) strings))) :junk-allowed t)
                                    #\Space))
