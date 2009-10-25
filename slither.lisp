@@ -1,6 +1,15 @@
 (in-package #:slither)
 ;;(in-suite slither-tests)
 
+(defparameter *common-optimization-settings*
+  '(optimize
+    (speed 0)
+    (safety 0)
+    (space 0)
+    (debug 0)
+    (compilation-speed 0))
+  "The common optimization settings used by declaration expressions.")
+
 (defconstant +X+ 0)
 (defconstant +Y+ 1)
 
@@ -73,6 +82,8 @@
 
 
 (defun valid-move-p (char)
+  (declare #.*common-optimization-settings*
+           (type character char))
   (case char
     (#\t t)
     (#\b t)
@@ -80,12 +91,14 @@
     (#\r t)))
 
 (defun allowable-board-x (x board)
+  (declare (type fixnum x))
   (if (AND (> x 0)
            (<= x (/ (1- (array-dimension board +X+)) 2)))
       t
       nil))
 
 (defun allowable-board-y (y board)
+  (declare (type fixnum y))
   (if (AND (> y 0)
            (<= y (/ (1- (array-dimension board +Y+)) 2)))
       t
@@ -202,20 +215,6 @@
                       ((and (oddp i) (oddp j)) ; fill in faces
                        (setf (aref board i j) #\Space))))))
 
-(defconstant +offset+ 1)
-
-(defun print-board (board)
-  (let ((board-dimension-x (array-dimension board 0))
-        (board-dimension-y (array-dimension board 1)))
-    (loop :for row :from 0 :to (+ board-dimension-x +offset+)
-       :do (loop :for column :from 0 :to (+ board-dimension-y +offset+)
-              :do (progn
-                    (cond ((AND (zerop row) (evenp row))
-                           (format t "~A" (/ column 2)))
-                          ((AND (zerop column) (evenp column))
-                           (format t "~A " (/ row 2))))))
-       :do (format t "~&"))))
-
 ;;; Read in a board from the user
 (defun read-board-from-user ()
   (let
@@ -275,7 +274,7 @@
 ;; (multiple-value-list (read-board-from-file "game2.txt")
 
 (defun parse-board (dimensions strings)
-                                        ;(format t "~A" strings)
+  ;;(format t "~A" strings)
   (let ((board (make-properly-sized-array dimensions)))
     ;;(print (array-dimensions board))
     (loop :for row fixnum :from 0 :to (1- (array-dimension board +X+))
@@ -360,7 +359,8 @@
          do (check-board *answered-board*)))
 
 (defun check-board (view)
-  (declare (type array view))
+  (declare   #.*common-optimization-settings*
+             (type array view))
   (let ((x-limit (array-dimension view +X+))
         (y-limit (array-dimension view +Y+))
         (x 1)
@@ -408,7 +408,8 @@
 
 
 (defun check-space (y x view)
-  (declare (type fixnum x y))
+  (declare #.*common-optimization-settings*
+           (type fixnum x y))
   (let ((goal (aref view y x)))
     ;;(format t "goal = ~D~&" goal)
     (if (not (characterp goal))
@@ -426,7 +427,8 @@
 ;; return true if current matches either goal or goal-two
 ;; Ignore the corresponding side if the number is negative or out-of-bounds
 (defun check-node (y x view)
-  (declare (type fixnum x y))
+  (declare #.*common-optimization-settings*
+           (type fixnum x y))
   (let ((x-limit (- (array-dimension view +X+) 1))
         (y-limit (- (array-dimension view +Y+) 1))
         (goal 0)
@@ -449,8 +451,7 @@
 ;; Pass in the position in the array
 ;; If it is a line, return a 1
 (defun is-line (y x view)
-  (declare (optimize (speed 0) (safety 0) (space 0)
-                     (compilation-speed 0) (debug 0))
+  (declare #.*common-optimization-settings*
            (type fixnum x y);(type simple-array view)
            )
   "Pass in the position in the array
