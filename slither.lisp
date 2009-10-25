@@ -73,9 +73,11 @@
 
 
 (defun valid-move-p (char)
-  (loop for test in '(#\t #\b #\l #\r)
-     :until (char= (char-downcase char) test)
-     finally (return (char= (char-downcase char) test))))
+  (case char
+    (#\t t)
+    (#\b t)
+    (#\l t)
+    (#\r t)))
 
 (defun allowable-board-x (x board)
   (if (AND (> x 0)
@@ -211,7 +213,7 @@
                     (cond ((AND (zerop row) (evenp row))
                            (format t "~A" (/ column 2)))
                           ((AND (zerop column) (evenp column))
-                           (format t "~A" (/ row 2))))))
+                           (format t "~A " (/ row 2))))))
        :do (format t "~&"))))
 
 ;;; Read in a board from the user
@@ -231,7 +233,8 @@
   (format t "Enter as NxM, where N and M are numbers.~&")
   (let
       ((dimensions (mapcar #'parse-integer
-                           (split-sequence #\x (read-line) :remove-empty-subseqs t))))
+                           (split-sequence #\x (read-line)
+                                           :remove-empty-subseqs t))))
     (cons (car dimensions) (cadr dimensions))))
 
 
@@ -270,26 +273,24 @@
 
 ;; Parse the board read in from file or user.
 ;; (multiple-value-list (read-board-from-file "game2.txt")
- 
+
 (defun parse-board (dimensions strings)
                                         ;(format t "~A" strings)
   (let ((board (make-properly-sized-array dimensions)))
-                                        ;(print (array-dimensions board))
-    (loop :for row :from 0 :to (1- (array-dimension board +X+))
-                                        ;:do (format t "row #~d~&" row)
+    ;;(print (array-dimensions board))
+    (loop :for row fixnum :from 0 :to (1- (array-dimension board +X+))
+       ;;:do (format t "row #~d~&" row)
        :do (loop :for column :from 0 :to (1- (array-dimension board +Y+))
-                                        ;:do (format t "row# ~D column #~d~&" row column)
-                                        ;:do (format t "~A~&" board )
+              ;; :do (format t "row# ~D column #~d~&" row column)
+              ;; :do (format t "~A~&" board )
               :do (cond ((and (evenp row) (evenp column)) ;+
                          (setf (aref board row column) #\+))
                         ((and (oddp row) (oddp column)) ;fill faces
                          (setf (aref board row column)
-                                        ;if a number, fill a number otherwise, it is not a number so use a space
+                               ;;if a number, fill a number otherwise, it is not a number so use a space
                                (if (parse-integer (nth (/ (1- column) 2)(split-sequence #\Space (nth (/ (1- row) 2) strings))) :junk-allowed t)
                                    (parse-integer (nth (/ (1- column) 2)(split-sequence #\Space (nth (/ (1- row) 2) strings))) :junk-allowed t)
-                                   #\Space))
-                                        ;(format t "~A rsietnristrstanr" (split-sequence #\Space (nth (/ (1- row) 2) strings)))
-                         ))))
+                                   #\Space))))))
     board))
 
 (defun make-properly-sized-array (dimensions)
@@ -339,7 +340,7 @@
 
 ;; Check the numbers
 ;; numbers are on the odd-odd pairs
-;; Then check all of the +s
+;; Then check all of the +'s
 ;; If the index of the add/sub is either negative or beyond the column or row length,
 ;; disregard
 
@@ -349,32 +350,38 @@
 ;;                                    while line
 ;;                                    collect line into lines
 ;;                                    finally (return lines))))
-;; (setf *answered-board* (make-array '(11 11) :initial-contents *answer-lines*))
+;; (defparameter *answered-board* (make-array '(11 11) :initial-contents (with-open-file (in "game2solution.txt") 
+;;                                                                 (loop for line = (read-line in nil nil)
+;;                                                                    while line
+;;                                                                    collect line into lines
+;;                                                                    finally (return lines)))))
 ;; (check-board *answered-board*)
+(time (loop for i from 0 to 60000 ;takes approximately 1 second
+         do (check-board *answered-board*)))
 
 (defun check-board (view)
-  (let* ((dimensions (array-dimensions view))
-         (x-limit (car dimensions))
-         (y-limit (cadr dimensions))
-         (x 1)
-         (y 1)
-         (return-val T))
-    ;; First, check the numbers
+  (declare (type array view))
+  (let ((x-limit (array-dimension view +X+))
+        (y-limit (array-dimension view +Y+))
+        (x 1)
+        (y 1)
+        (return-val T))
+    (declare (type fixnum x y x-limit y-limit))
+    ;; first, check the numbers
     (loop
        (loop
           (if (not (check-space y x view) )
               (setf return-val nil))
-          (setf x (+ x 2))
-          (when (> x (- x-limit 1))
+          (setf x (incf x 2))
+          (when (> x (1- x-limit))
             (progn
               (setf x 1)
-              (return)) ))
-       (setf y (+ y 2))
-       (when (> y (- y-limit 1))
+              (return))))
+       (setf y (incf y 2))
+       (when (> y (1- y-limit))
          (progn
            (setf y 1)
-           (return) )
-         )
+           (return)))
        ;; end of checking the spaces
        )
     ;; now check the pluses
@@ -383,19 +390,15 @@
     ;; almost copypasta from before
     (loop
        (loop
-          (if (not (check-node y x view dimensions) )
-              (setf return-val nil)
-              )
+          (if (not (check-node y x view))
+              (setf return-val nil))
           (setf x (+ x 2))
-          (when (> x (- x-limit 1))
+          (when (> x (1- x-limit))
             (progn
               (setf x 0)
-              (return)
-              )
-            )
-          )
+              (return))))
        (setf y (+ y 2))
-       (when (> y (- y-limit 1))
+       (when (> y (1- y-limit))
          (progn
            (setf y 0)
            (return)))
@@ -405,15 +408,16 @@
 
 
 (defun check-space (y x view)
+  (declare (type fixnum x y))
   (let ((goal (aref view y x)))
     ;;(format t "goal = ~D~&" goal)
     (if (not (characterp goal))
         (progn
-          (let ((current (+
-                          (is-line (+ y 1) x view)
-                          (is-line (- y 1) x view)
-                          (is-line y (+ x 1) view)
-                          (is-line y (- x 1) view))))
+          (let ((current (+ (is-line (1+ y) x view)
+                            (is-line (1- y) x view)
+                            (is-line y (1+ x) view)
+                            (is-line y (1- x) view))))
+            (declare (type fixnum current))
             ;;(format t "goal = ~D current = ~D" goal current)
             (if (= current goal) T nil)))
         T)))
@@ -421,31 +425,38 @@
 ;; Here is a bit more tricky.  Gotta see where we are.
 ;; return true if current matches either goal or goal-two
 ;; Ignore the corresponding side if the number is negative or out-of-bounds
-(defun check-node ( y x view dimensions)
-  (let ((x-limit (- (car dimensions) 1) )
-        (y-limit (- (cadr dimensions) 1) )
+(defun check-node (y x view)
+  (declare (type fixnum x y))
+  (let ((x-limit (- (array-dimension view +X+) 1))
+        (y-limit (- (array-dimension view +Y+) 1))
         (goal 0)
         (goal-two 2)
-        (curent 0))
+        (current 0))
+    (declare (type fixnum x-limit y-limit goal goal-two current))
     ;; if the x value is NOT less than zero, do the math.
-    (if (not (< (- x 1) 0 ) )
-        (setf curent (+ curent (is-line y (- x 1) view))))
-    (if (not (< (- y 1) 0 ) )
-        (setf curent (+ curent (is-line (- y 1) x view))))
-    (if (not (> (+ x 1) x-limit ) )
-        (setf curent (+ curent (is-line y (+ x 1) view))))
-    (if (not (> (+ y 1) y-limit ) )
-        (setf curent (+ curent (is-line (+ y 1) x view))))
-    (if (or (= curent goal) (= curent goal-two) ) T nil)))
+    (if (not (< (1- x) 0 ) )
+        (setf current (+ current (is-line y (1- x) view))))
+    (if (not (< (1- y) 0 ) )
+        (setf current (+ current (is-line (1- y) x view))))
+    (if (not (> (1+ x) x-limit ) )
+        (setf current (+ current (is-line y (1+ x) view))))
+    (if (not (> (1+ y) y-limit ) )
+        (setf current (+ current (is-line (1+ y) x view))))
+    (if (or (= current goal) (= current goal-two) ) T nil)))
 
 
 ;;;; is-line
-;; Pass in the position x in the row-major array
+;; Pass in the position in the array
 ;; If it is a line, return a 1
-(defun is-line ( y x view )
-  "Pass in the position x in the row-major array
+(defun is-line (y x view)
+  (declare (optimize (speed 0) (safety 0) (space 0)
+                     (compilation-speed 0) (debug 0))
+           (type fixnum x y);(type simple-array view)
+           )
+  "Pass in the position in the array
 If it is a line, return a 1"
   (let ((ret-val 0))
+    (declare (type fixnum ret-val))
     (if (char= #\| (character (aref view y x)))
         (setf ret-val 1))
     (if (char= #\- (character (aref view y x)))
