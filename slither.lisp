@@ -1,14 +1,17 @@
+;;Morgan Bauer & Dana Preble
+
 (in-package #:slither)
 ;;(in-suite slither-tests)
 
-(defparameter *common-optimization-settings*
-  '(optimize
-    (speed 0)
-    (safety 0)
-    (space 0)
-    (debug 0)
-    (compilation-speed 0))
-  "The common optimization settings used by declaration expressions.")
+(eval-when (:compile-toplevel)
+  (defparameter *common-optimization-settings*
+    '(optimize
+      (speed 3)
+      (safety 0)
+      (space 0)
+      (debug 0)
+      (compilation-speed 0))
+    "The common optimization settings used by declaration expressions."))
 
 (defconstant +X+ 0)
 (defconstant +Y+ 1)
@@ -24,8 +27,7 @@
             (game-loop (multiple-value-call #'parse-board (read-board-from-file "game1.txt"))))
           (progn
             (format t "Please enter a file name (no quotes, e.g. game1.txt not \"game1.txt\")")
-            (game-loop (multiple-value-call #'parse-board (read-board-from-file (loop-until-file-exists)))))
-          )))
+            (game-loop (multiple-value-call #'parse-board (read-board-from-file (loop-until-file-exists))))))))
 
 
 (defun game-loop (board)
@@ -58,8 +60,7 @@
   (read-line *query-io*))
 
 (defun parse-move (string board)
-  (declare (optimize (speed 1) (safety 1) (space 1)
-                     (compilation-speed 1) (debug 1))
+  (declare #.*common-optimization-settings*
            (type string string))
   (let ((possible-move (split-sequence #\Space string :remove-empty-subseqs t)))
     (declare (type list possible-move))
@@ -91,14 +92,16 @@
     (#\r t)))
 
 (defun allowable-board-x (x board)
-  (declare (type fixnum x))
+  (declare #.*common-optimization-settings*
+           (type fixnum x))
   (if (AND (> x 0)
            (<= x (/ (1- (array-dimension board +X+)) 2)))
       t
       nil))
 
 (defun allowable-board-y (y board)
-  (declare (type fixnum y))
+  (declare #.*common-optimization-settings*
+           (type fixnum y))
   (if (AND (> y 0)
            (<= y (/ (1- (array-dimension board +Y+)) 2)))
       t
@@ -172,11 +175,6 @@
 ;;;; Constraints of solving the game
 ;; Must be one single continuous loop (out-degree of each vertex is 2)
 ;; Must not violate the numbers
-
-(defun constraint-checker ()
-  (if (OR (not-continuous-loop) (violates-numbers-p))
-      (keep-playing)
-      (:GAME-WIN)))
 
 ;;;; Classes
 ;;;These class declarations are nowhere near complete and are just a basic structure to maybe hang ideas upon.
@@ -317,6 +315,10 @@
                        (format t "~A" (aref board (1- row) (1- column))))))
      :do (format t "~&")))
 
+
+
+
+
 ;;;; Count out-edges
 ;;; use when traversing blindly (or not?)
 ;; if out edges if out edges are  two (not including the in edge) or more OR more than 3 (including the in edge), then fail and backtrack. It is not clear which case would be better to optimize for
@@ -349,14 +351,19 @@
 ;;                                    while line
 ;;                                    collect line into lines
 ;;                                    finally (return lines))))
-;; (defparameter *answered-board* (make-array '(11 11) :initial-contents (with-open-file (in "game2solution.txt") 
+;; (defparameter *answered-board* (make-array '(11 11) :initial-contents (with-open-file (in "game2solution.txt")
 ;;                                                                 (loop for line = (read-line in nil nil)
 ;;                                                                    while line
 ;;                                                                    collect line into lines
 ;;                                                                    finally (return lines)))))
 ;; (check-board *answered-board*)
-(time (loop for i from 0 to 60000 ;takes approximately 1 second
-         do (check-board *answered-board*)))
+;; (time (loop for i from 0 to 175000 ;takes approximately 1 second
+;;          do (check-board *answered-board*)))
+
+
+
+;(declaim (inline is-line check-space check-node))
+
 
 (defun check-board (view)
   (declare   #.*common-optimization-settings*
@@ -367,57 +374,60 @@
         (y 1)
         (return-val T))
     (declare (type fixnum x y x-limit y-limit))
-    ;; first, check the numbers
+    ;; MAke two functions here, and do something like
+                                        ; (if (and (check-spaces ...) (check-nodes ...))
+                                        ;     (you-win)
+                                        ;     (loop))
+    ;; first, check the numbers constraints
     (loop
        (loop
           (if (not (check-space y x view) )
               (setf return-val nil))
-          (setf x (incf x 2))
+          (incf x 2)
           (when (> x (1- x-limit))
             (progn
               (setf x 1)
               (return))))
-       (setf y (incf y 2))
+       (incf y 2)
        (when (> y (1- y-limit))
          (progn
            (setf y 1)
-           (return)))
-       ;; end of checking the spaces
-       )
+           (return))))
+    ;; end of checking the spaces
     ;; now check the pluses
     (setf x 0)
     (setf y 0)
-    ;; almost copypasta from before
+    ;;Check nodes
     (loop
        (loop
           (if (not (check-node y x view))
               (setf return-val nil))
-          (setf x (+ x 2))
+          (incf x 2)
           (when (> x (1- x-limit))
             (progn
               (setf x 0)
               (return))))
-       (setf y (+ y 2))
+       (incf y 2)
        (when (> y (1- y-limit))
          (progn
            (setf y 0)
-           (return)))
-       ;; end of checking the nodes
-       )
+           (return)))) ;; end of checking the nodes
     return-val))
+
 
 
 (defun check-space (y x view)
   (declare #.*common-optimization-settings*
-           (type fixnum x y))
+           (type fixnum x y)
+           (inline is-line))
   (let ((goal (aref view y x)))
     ;;(format t "goal = ~D~&" goal)
     (if (not (characterp goal))
         (progn
-          (let ((current (+ (is-line (1+ y) x view)
-                            (is-line (1- y) x view)
-                            (is-line y (1+ x) view)
-                            (is-line y (1- x) view))))
+          (let ((current (the fixnum (+ (is-line (1+ y) x view)
+                                        (is-line (1- y) x view)
+                                        (is-line y (1+ x) view)
+                                        (is-line y (1- x) view)))))
             (declare (type fixnum current))
             ;;(format t "goal = ~D current = ~D" goal current)
             (if (= current goal) T nil)))
@@ -446,23 +456,17 @@
         (setf current (+ current (is-line (1+ y) x view))))
     (if (or (= current goal) (= current goal-two) ) T nil)))
 
-
 ;;;; is-line
 ;; Pass in the position in the array
 ;; If it is a line, return a 1
 (defun is-line (y x view)
   (declare #.*common-optimization-settings*
-           (type fixnum x y);(type simple-array view)
-           )
+           (type fixnum x y))
   "Pass in the position in the array
 If it is a line, return a 1"
-  (let ((ret-val 0))
-    (declare (type fixnum ret-val))
-    (if (char= #\| (character (aref view y x)))
-        (setf ret-val 1))
-    (if (char= #\- (character (aref view y x)))
-        (setf ret-val 1))
-    (if (char= #\Space (character (aref view y x)))
-        (setf ret-val 0))
-    ret-val))
-
+  (let ((char (aref view y x)))
+    (declare (type character char))
+    (case char
+      (#\| 1)
+      (#\- 1)
+      (#\Space 0))))
