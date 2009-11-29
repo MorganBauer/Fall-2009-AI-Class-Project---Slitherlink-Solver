@@ -1,12 +1,11 @@
 ;;Morgan Bauer & Dana Preble
 
 (in-package #:slither)
-;;(in-suite slither-tests)
 
 (eval-when (:compile-toplevel)
   (defparameter *common-optimization-settings*
     '(optimize
-      (speed 3)
+      (speed 0)
       (safety 0)
       (space 0)
       (debug 0)
@@ -18,35 +17,58 @@
 
 (defun slither ()
   "Game goes here"
-  (format t "Welcome to slither")
-  (if (y-or-n-p "Play slither?")
-      (if (y-or-n-p "Load game automatically?(You can choose to load from a filename later)")
-          (progn
-            (format t "Loading game1.txt")
-            (probe-file "game1.txt")
-            (game-loop (multiple-value-call #'parse-board (read-board-from-file "game1.txt"))))
-          (progn
-            (format t "Please enter a file name (no quotes, e.g. game1.txt not \"game1.txt\")")
-            (game-loop (multiple-value-call #'parse-board (read-board-from-file (loop-until-file-exists))))))))
+  (format t "Welcome to slither~&")
+  (format t "The goal of the game is to make a single continuous loop
+around the board without crossing or meeting up.
+There is only one solution.
+Moves are made in triplets like \"1 3 t\"
+This signifies the box at 1 down and 3 over,
+with the line being placed above the box.
+If there is already a line there, it is removed.
+if you wish to quit, type \"quit\" at the game prompt.~&")
+  (loop while (y-or-n-p "Play slither?")
+     do (if (y-or-n-p "Load game automatically?(You can choose to load from a filename later)")
+            (progn
+              (format t "Loading game1.txt")
+              (probe-file "game1.txt")
+              (game-loop (multiple-value-call #'parse-board
+                           (read-board-from-file "game1.txt"))))
+            (progn
+              (format t "Please enter a file name (no quotes, e.g. game1.txt not \"game1.txt\")")
+              (game-loop (multiple-value-call #'parse-board
+                           (read-board-from-file (loop-until-file-exists))))))))
 
+
+
+
+;; 1. print board
+;; 2. query player for a position
+;;    Update board as result of position
+;; 3. checks
 
 (defun game-loop (board)
-  ;;(format t "Starting Game")
-  (let ((moves nil))
+  ;;(format t "Starting Game~&")
+  (let ((moves nil)
+        (starting-time (get-universal-time)))
     (loop
-       (print-board board)
-       (loop for move = (query-move)
+       (print-board board) ; 1.Print Board
+       (loop for move = (query-move) ; 2. Query player
+          ;;do (format t "~A" move)
+          do (when (string-equal "quit" (string-trim " " move))
+               (format t "Quitting current game")
+               (return-from game-loop))
           do (setf move (parse-move move board))
           until move
           finally (progn
+                    ;;(format t "~A" move)
                     (push move moves)
                     (place-move move board)))
        (if (check-board board)
            (progn
-             (format t "You WIn!")
+             (format t "You Win!~&")
              (print-moves (nreverse moves))
-             (return)
-             )))))
+             (format t " In ~D seconds" (- (get-universal-time) starting-time))
+             (return))))))
 
 (defun print-moves (moves)
   (format t "Your moves in order were:")
@@ -128,21 +150,10 @@
                (setf (aref board herex (1+ herey)) #\|)
                (setf (aref board herex (1+ herey)) #\Space))))))
 
-
-;; 1. print board
-;; 2. query player for a position
-;;    Update board as result of position
-;; 3. checks
-
-
-
 ;; I want to have cells with four edges, and the center number.
 ;; It would all be stored in an array,
-;; the array for a 5x5 of numbers in the boxes needed, is (2*n + 1) for each side,
+;; the array for a 5x5 of numbers in the boxes needed, is (2*n + 1) for each side, or 11x11
 ;; 1 for each of the numbers, and 6 for the points and edges between.
-
-;;Maybe two arrays, one for the center, and one for the points
-
 
 ;;;; Mathematical Observations
 ;;; This whole thing is very graph theory.
@@ -175,30 +186,6 @@
 ;;;; Constraints of solving the game
 ;; Must be one single continuous loop (out-degree of each vertex is 2)
 ;; Must not violate the numbers
-
-;;;; Classes
-;;;These class declarations are nowhere near complete and are just a basic structure to maybe hang ideas upon.
-
-(defclass grid ()
-  (faces edges vertices))
-
-(defclass face ()
-  (( order)
-   ( edges )
-   (vertices)))
-
-(defclass edge ()
-  (faces vertices))
-
-(defclass vertex ()
-  (faces edges))
-
-;; Maybe a board class to hold an array? But what else can it hold?
-;; The array contains a structured edition of the game board
-;; so it can be printed out easily
-(defclass board ()
-  (array))
-
 
 ;;; This sucks, but it should work for initializing elements into an array
 (defun basic-initialize-board (board)
@@ -250,23 +237,23 @@
            (height (parse-integer (cadr board-size))))
       (values (mapcar #'parse-integer board-size)
               (loop for i from 1 to height
-                 do (format t "Reading ~:r line...~&" i)
+                 ;;do (format t "Reading ~:r line...~&" i)
                  collecting (read-line file-stream))))))
 
 ;; Tests for reading game form a file
 
-(defun test-read-board-from-file ()
-  (AND (equal (MULTIPLE-VALUE-LIST (read-board-from-file "game1.txt"))
-              '((2 2)
-                ("3 3"
-                 "n n")))
-       (equal (MULTIPLE-VALUE-LIST (read-board-from-file "game2.txt"))
-              '((5 5)
-                ("n n n 2 0"
-                 "2 3 2 n 2"
-                 "2 1 n 3 n"
-                 "n 1 2 n 3"
-                 "n 2 n n n")))))
+(define-test read-board-from-file
+  (assert-equal (MULTIPLE-VALUE-LIST (read-board-from-file "game1.txt"))
+                '((2 2)
+                  ("3 3"
+                   "n n")))
+  (assert-equal (MULTIPLE-VALUE-LIST (read-board-from-file "game2.txt"))
+                '((5 5)
+                  ("n n n 2 0"
+                   "2 3 2 n 2"
+                   "2 1 n n 3"
+                   "n 1 2 n 3"
+                   "n 2 n n n"))))
 
 ;; Parse the board read in from file or user.
 ;; (multiple-value-list (read-board-from-file "game2.txt")
@@ -298,22 +285,25 @@
   (1+ (* 2 dimension)))
 
 (defun print-board (board)
-  (format t "~&")
+  (format t "~&") ; Make sure to start on a fresh line.
   (loop :for row :from 0 :to (array-dimension board +X+)
      :do (loop :for column :from 0 :to (array-dimension board +Y+)
-            :do (cond ((= row 0) ;if we are printing the first-line
-                       (cond ((OR (= column 0) (oddp column))
-                              (format t " "))
-                             ((evenp column)
-                              (format t "~D" (/ column 2)))))
-                      ((= column 0)
-                       (cond ((oddp row)
-                              (format t " "))
-                             ((evenp row)
-                              (format t "~D" (/ row 2)))))
-                      ((AND (> row 0) (> column 0))
-                       (format t "~A" (aref board (1- row) (1- column))))))
-     :do (format t "~&")))
+            :do (cond
+                  ((= row 0) ; If we are printing the first-line
+                   (cond ((= 0 column)
+                          (format t "     "))
+                         ((oddp column) ;non numbered columns
+                          (format t " "))
+                         ((evenp column) ; numbered columns
+                          (format t "~3D  " (/ column 2)))))
+                  ((= column 0) ; we are printing the first row, which contains the row numbers
+                   (cond ((oddp row)
+                          (format t "     "))
+                         ((evenp row)
+                          (format t "~3D  " (/ row 2)))))
+                  ((AND (> row 0) (> column 0)) ;the actual board
+                   (format t "~3A" (aref board (1- row) (1- column))))))
+     :do (format t "~2&")))
 
 
 
@@ -345,24 +335,13 @@
 ;; If the index of the add/sub is either negative or beyond the column or row length,
 ;; disregard
 
-;;; Turn the following into a test for the board.
-;; (setf *answer-lines* (with-open-file (in "/home/morgan/Documents/programming/lisp/cl/slitherlink/game2solution.txt")
-;;                                 (loop for line = (read-line in nil nil)
-;;                                    while line
-;;                                    collect line into lines
-;;                                    finally (return lines))))
-;; (defparameter *answered-board* (make-array '(11 11) :initial-contents (with-open-file (in "game2solution.txt")
-;;                                                                 (loop for line = (read-line in nil nil)
-;;                                                                    while line
-;;                                                                    collect line into lines
-;;                                                                    finally (return lines)))))
-;; (check-board *answered-board*)
+
 ;; (time (loop for i from 0 to 175000 ;takes approximately 1 second
 ;;          do (check-board *answered-board*)))
 
 
 
-;(declaim (inline is-line check-space check-node))
+                                        ;(declaim (inline is-line check-space check-node))
 
 
 (defun check-board (view)
@@ -374,7 +353,7 @@
         (y 1)
         (return-val T))
     (declare (type fixnum x y x-limit y-limit))
-    ;; MAke two functions here, and do something like
+    ;; Make two functions here, and do something like
                                         ; (if (and (check-spaces ...) (check-nodes ...))
                                         ;     (you-win)
                                         ;     (loop))
@@ -414,8 +393,6 @@
            (return)))) ;; end of checking the nodes
     return-val))
 
-
-
 (defun check-space (y x view)
   (declare #.*common-optimization-settings*
            (type fixnum x y)
@@ -436,24 +413,25 @@
 ;; Here is a bit more tricky.  Gotta see where we are.
 ;; return true if current matches either goal or goal-two
 ;; Ignore the corresponding side if the number is negative or out-of-bounds
-(defun check-node (y x view)
+(defun check-node (y x board)
+  "Return true if there is an out-degree of 0 or 2. This means that the node is individually valid."
   (declare #.*common-optimization-settings*
            (type fixnum x y))
-  (let ((x-limit (- (array-dimension view +X+) 1))
-        (y-limit (- (array-dimension view +Y+) 1))
+  (let ((x-limit (- (array-dimension board +X+) 1))
+        (y-limit (- (array-dimension board +Y+) 1))
         (goal 0)
         (goal-two 2)
         (current 0))
     (declare (type fixnum x-limit y-limit goal goal-two current))
     ;; if the x value is NOT less than zero, do the math.
     (if (not (< (1- x) 0 ) )
-        (setf current (+ current (is-line y (1- x) view))))
+        (setf current (+ current (is-line y (1- x) board))))
     (if (not (< (1- y) 0 ) )
-        (setf current (+ current (is-line (1- y) x view))))
+        (setf current (+ current (is-line (1- y) x board))))
     (if (not (> (1+ x) x-limit ) )
-        (setf current (+ current (is-line y (1+ x) view))))
+        (setf current (+ current (is-line y (1+ x) board))))
     (if (not (> (1+ y) y-limit ) )
-        (setf current (+ current (is-line (1+ y) x view))))
+        (setf current (+ current (is-line (1+ y) x board))))
     (if (or (= current goal) (= current goal-two) ) T nil)))
 
 ;;;; is-line
@@ -470,3 +448,19 @@ If it is a line, return a 1"
       (#\| 1)
       (#\- 1)
       (#\Space 0))))
+
+(define-test checker
+  (let ((game1solution (make-array '(5 5)
+                                   :initial-contents (with-open-file (in "game1solution.txt")
+                                                       (loop for line = (read-line in nil nil)
+                                                          while line
+                                                          collect line into lines
+                                                          finally (return lines)))))
+        (game2solution (make-array '(11 11)
+                                   :initial-contents (with-open-file (in "game2solution.txt")
+                                                       (loop for line = (read-line in nil nil)
+                                                          while line
+                                                          collect line into lines
+                                                          finally (return lines))))))
+    (assert-true (check-board game1solution))
+    (assert-true (check-board game2solution))))

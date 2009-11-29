@@ -3,10 +3,7 @@
 (defpackage #:slither
   (:use #:common-lisp
         #:split-sequence
-        ;#:it.bese.FiveAM
-        ))
+        #:lisp-unit)
+  (:export slither test-all))
 
 (in-package #:slither)
-
-;(def-suite slither-tests :description "Main test-suite.")
-;(in-suite slither-tests)
