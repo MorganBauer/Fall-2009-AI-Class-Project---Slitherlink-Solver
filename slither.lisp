@@ -6,7 +6,7 @@
   (defparameter *common-optimization-settings*
     '(optimize
       (speed 0)
-      (safety 0)
+      (safety 3)
       (space 0)
       (debug 0)
       (compilation-speed 0))
@@ -34,7 +34,8 @@ if you wish to quit, type \"quit\" at the game prompt.~&")
               (game-loop (multiple-value-call #'parse-board
                            (read-board-from-file "game1.txt"))))
             (progn
-              (format t "Please enter a file name (no quotes, e.g. game1.txt not \"game1.txt\")")
+              (format t "Please enter a file name")
+              (format t "(no quotes, e.g. game1.txt not \"game1.txt\")")
               (game-loop (multiple-value-call #'parse-board
                            (read-board-from-file (loop-until-file-exists))))))))
 
@@ -56,6 +57,10 @@ if you wish to quit, type \"quit\" at the game prompt.~&")
           ;;do (format t "~A" move)
           do (when (string-equal "quit" (string-trim " " move))
                (format t "Quitting current game")
+               (return-from game-loop))
+          do (when (string-equal "solve" (string-trim " " move))
+               (format t "Solving")
+               (solve board)
                (return-from game-loop))
           do (setf move (parse-move move board))
           until move
@@ -133,6 +138,9 @@ if you wish to quit, type \"quit\" at the game prompt.~&")
   (let ((herex (1+ (* 2 (1- (car triplet)))))
         (herey (1+ (* 2 (1- (cadr triplet)))))
         (move (char-downcase (caddr triplet))))
+    ;; Probably possible to use a case statement here (for speed),
+    ;; but the computer doesn't mind if it has to wait
+    ;; (i.e. user-input is much slower than the computer).
     (cond ((char= #\t move)
            (if (char= (aref board (1- herex) herey) #\Space)
                (setf (aref board (1- herex) herey) #\-)
@@ -182,23 +190,9 @@ if you wish to quit, type \"quit\" at the game prompt.~&")
 
 ;;; This reminds me of some of the rendering techniques and such used to determine whether we are inside or outside of a polygon.
 
-
 ;;;; Constraints of solving the game
 ;; Must be one single continuous loop (out-degree of each vertex is 2)
 ;; Must not violate the numbers
-
-;;; This sucks, but it should work for initializing elements into an array
-(defun basic-initialize-board (board)
-  (loop :for i :from 0 :to (1- (array-dimension board 0))
-     :do (loop :for j :from 0 :to (1- (array-dimension board 1))
-            :do (cond ((and (evenp i) (evenp j)); fill in vertexes
-                       (setf (aref board i j) #\+))
-                      ((and (evenp i) (oddp j)); fill in top/bottom edges/lines
-                       (setf (aref board i j) #\-))
-                      ((and (oddp i) (evenp j)); fill in left/right edges/lines
-                       (setf (aref board i j) #\|))
-                      ((and (oddp i) (oddp j)) ; fill in faces
-                       (setf (aref board i j) #\Space))))))
 
 ;;; Read in a board from the user
 (defun read-board-from-user ()
@@ -233,14 +227,14 @@ if you wish to quit, type \"quit\" at the game prompt.~&")
 ;;; Read in a board from a file
 (defun read-board-from-file (filename)
   (with-open-file (file-stream filename :direction :input)
-    (let* ((board-size (split-sequence #\Space (read-line file-stream) :remove-empty-subseqs t)) ;we are reading the first line for the dimensions of the board.
+    (let* ((board-size (split-sequence #\Space (read-line file-stream) :remove-empty-subseqs t)) ; We are reading the first line for the dimensions of the board.
            (height (parse-integer (cadr board-size))))
       (values (mapcar #'parse-integer board-size)
               (loop for i from 1 to height
                  ;;do (format t "Reading ~:r line...~&" i)
                  collecting (read-line file-stream))))))
 
-;; Tests for reading game form a file
+;; Tests for reading game from a file
 
 (define-test read-board-from-file
   (assert-equal (MULTIPLE-VALUE-LIST (read-board-from-file "game1.txt"))
@@ -319,8 +313,7 @@ if you wish to quit, type \"quit\" at the game prompt.~&")
 ;; must have an even number of crossings
 ;; application of even-odd rule
 
-
-;;; Theoretically I want test-game funciton that we give it a name, and a test games function where we gice it a list of games.
+;;; Theoretically I want test-game funciton that we give it a name, and a test games function where we give it a list of games (i.e. a list of strings that are filenames to load games from).
 ;; (test game1
 ;;       "Checks if game1 can be solved"
 ;;       (is (= (solve "game1.txt") (parse-solution "game1solution.txt"))))
@@ -341,7 +334,7 @@ if you wish to quit, type \"quit\" at the game prompt.~&")
 
 
 
-                                        ;(declaim (inline is-line check-space check-node))
+;(declaim (inline is-line check-space check-node))
 
 
 (defun check-board (view)
@@ -379,7 +372,7 @@ if you wish to quit, type \"quit\" at the game prompt.~&")
     ;;Check nodes
     (loop
        (loop
-          (if (not (check-node y x view))
+          (if (not (check-node y x view x-limit y-limit))
               (setf return-val nil))
           (incf x 2)
           (when (> x (1- x-limit))
@@ -413,25 +406,25 @@ if you wish to quit, type \"quit\" at the game prompt.~&")
 ;; Here is a bit more tricky.  Gotta see where we are.
 ;; return true if current matches either goal or goal-two
 ;; Ignore the corresponding side if the number is negative or out-of-bounds
-(defun check-node (y x board)
+(defun check-node (y x board x-limit y-limit)
   "Return true if there is an out-degree of 0 or 2. This means that the node is individually valid."
   (declare #.*common-optimization-settings*
            (type fixnum x y))
-  (let ((x-limit (- (array-dimension board +X+) 1))
-        (y-limit (- (array-dimension board +Y+) 1))
+  (let (;(x-limit (- (array-dimension board +X+) 1))
+        ;(y-limit (- (array-dimension board +Y+) 1))
         (goal 0)
         (goal-two 2)
         (current 0))
     (declare (type fixnum x-limit y-limit goal goal-two current))
     ;; if the x value is NOT less than zero, do the math.
-    (if (not (< (1- x) 0 ) )
-        (setf current (+ current (is-line y (1- x) board))))
-    (if (not (< (1- y) 0 ) )
-        (setf current (+ current (is-line (1- y) x board))))
-    (if (not (> (1+ x) x-limit ) )
-        (setf current (+ current (is-line y (1+ x) board))))
-    (if (not (> (1+ y) y-limit ) )
-        (setf current (+ current (is-line (1+ y) x board))))
+    (if (not (< (1- x) 0))
+        (setf current (the fixnum (+ current (is-line y (1- x) board)))))
+    (if (not (< (1- y) 0))
+        (setf current (the fixnum (+ current (is-line (1- y) x board)))))
+    (if (not (> (1+ x) (1- x-limit)))
+        (setf current (the fixnum (+ current (is-line y (1+ x) board)))))
+    (if (not (> (1+ y) (1- y-limit)))
+        (setf current (the fixnum (+ current (is-line (1+ y) x board)))))
     (if (or (= current goal) (= current goal-two) ) T nil)))
 
 ;;;; is-line
@@ -464,3 +457,15 @@ If it is a line, return a 1"
                                                           finally (return lines))))))
     (assert-true (check-board game1solution))
     (assert-true (check-board game2solution))))
+
+
+
+;;;;Arbitrary benchmark
+;; (defparameter *game2solution* (make-array '(11 11)
+;;                                    :initial-contents (with-open-file (in "game2solution.txt")
+;;                                                        (loop for line = (read-line in nil nil)
+;;                                                           while line
+;;                                                           collect line into lines
+;;                                                           finally (return lines)))))
+;; (time (loop for x from 1 to 150000
+;;                do (check-board game2solution)))
