@@ -15,6 +15,9 @@
   (let ((starting-time (get-universal-time)) ; remember starting time
         (moves nil)) ; create empty list for moves
     ;; when dfs'ing on dots, we can go from 0 to (1- dimension-limit) by 2
+    ;; Perhaps instead of picking an arbitrary starting position, start at one of the squares that
+    ;; actually contains a number other than zero (therefore one of those four spaces has to have a line)
+    ;; That way we avoid marking a place where there may not need a line at all.
     (loop for x from 0 to (array-dimension board +X+) by 2
        :do (loop for y from 0 to (array-dimension board +Y+) by 2
               ;; make a function pass it in.
@@ -39,14 +42,35 @@
 ;  (and (evenp x) (evenp y)))
 
 
-;; 1 check if solved
+;; 1 check if solved.  if so, you are win.
 ;; 2 check if there is more than 1 line leaving
+;;   If there is, and the board does not check out,
+;;   you are error.  Back up/prune.
 ;; 3 dfs in all directions not the line.
 ;;   this involves
 ;;   1 putting a line in the direction we are going
 ;;   2 pushing the move into the moves list
 ;;   Last; calling dfs with the coordinates offset by 2
 
+;; ----little idea----
+;; What I want to do is rank the three (or less) available 
+;; moves by the probability that there will 
+;; be a line...  So cells with a 3 get a higher priority over 
+;; cells with just a 1 or 2 adjacent to them.
+;; Cells with no number next to them get no boost.  
+;; Moves that intersect with a zero or if they GO OVER the cell/line count
+;; automatically get pruned.  This "rank" will be calculated by 
+;; that edge's adjacent cells - there will be two for each possible
+;; move.  So an edge with two [3]s next to it will get higher priority
+;; than a [2] and a blank.
+;; ----/little idea----
+
+;; Perhaps ranking isn't such a good idea.  (tested it out on a few boards)
+;; But finding a beter starting point is good.  
+;; so 
+;; A. find a good starting point
+;; B. Blind search :( until you get an answer.
+;; going too far can easily become an explosion...
 (defun dfs (board x y moves) ; maybe add a depth so that we don't get too far in?
   ())
 
