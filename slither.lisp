@@ -460,3 +460,10 @@ If it is a line, return a 1"
 ;;                                                           finally (return lines)))))
 ;; (time (loop for x from 1 to 150000
 ;;                do (check-board game2solution)))
+
+(defun slurp-it (filename)
+           (with-open-file (stream filename)
+             (loop for line = (read-line stream nil nil) 
+                while line
+                collecting line into lines
+                finally (return lines))))
