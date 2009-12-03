@@ -1,7 +1,7 @@
 by Morgan Bauer and Dana Preble
 
 Load by
-(load "loader.txt")
+(load "loader")
 
 then do 
 (in-package slither)
