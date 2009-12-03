@@ -25,7 +25,7 @@
     ;; actually contains a number other than zero (therefore one of those four spaces has to have a line)
     ;; That way we avoid marking a place where there may not need a line at all.
 
-    (score-and-find-a-plausible-starting-location) ; see below
+    (find-a-plausible-starting-location-then-dfsolve) ; see below
     
     (loop for x from 0 to (array-dimension board +X+) by 2
        :do (loop for y from 0 to (array-dimension board +Y+) by 2
@@ -47,28 +47,101 @@
     (format t "~&holy moly, there is no solution!~%This should not be possible!~&")))
 
 
-(defun score-and-find-a-plausible-starting-location (board)
-  ;go for it dana. I'll work on it some later
-  ())
+(defun find-a-plausible-starting-location-then-dfsolve (board)
+  ; A good starting location will be a cross that has a higher number on it.
+  ; if the number is a three, then EVERY + will guarantee a solution. 
+  ; at the most, if there are no 3's, then a 2 or 1 will suffice.  
+  ; Then, worst case scenario, two dfs's will have to be done, 
+  ; starting from opposite corners.
+  (let ((start-pt-x nil)
+       (start-pt-y nil))
+  ; Check for 3's on the board
+  (loop for x from 1 to (- (array-dimension board +X+) 2) by 2 
+     :do (loop for y from 1 to (- (array-dimension board +Y+) 2) by 2
+	 :do (if (typep (aref board x y) 'integer)
+		 (if (= 3 (aref board x y))
+	                (progn
+	 		  (multiple-value-setq (start-pt-x start-pt-y) (values x y))
+	  		  (return))
+	         ())
+	      ())
+	  )
+   (if (typep start-pt-x 'integer) (return) () )
+   )
+  ; only check for twos if there are no threes.
+  ; Will skip over this if start-pt-x is not nil
+  (if (typep start-pt-x (type-of nil)) ; checks by type so there are no errors...
+      (loop for x from 1 to (array-dimension board +X+) by 2 
+      :do (loop for y from 1 to (array-dimension board +Y+) by 2
+          :do (if (typep (aref board x y) 'integer)
+		 (if (= 2 (aref board x y))
+	                (progn
+	 		  (multiple-value-setq (start-pt-x start-pt-y) (values x y))
+	  		  (return))
+	         ())
+	      ())
+	  )
+   (if (typep start-pt-x 'integer) (return) () )
+   ) () ) ; else does nothing...
+  (if (typep start-pt-x (type-of nil)) ; checks by type so there are no errors...
+      (loop for x from 1 to (array-dimension board +X+) by 2 
+      :do (loop for y from 1 to (array-dimension board +Y+) by 2
+          :do (if (typep (aref board x y) 'integer)
+		 (if (= 1 (aref board x y))
+	                (progn
+	 		  (multiple-value-setq (start-pt-x start-pt-y) (values x y))
+	  		  (return))
+	         ())
+	      ()) ; hooray for nested ifs inside nested loops... </sarcasm>
+	  )
+   (if (typep start-pt-x 'integer) (return) () )
+   ) () ) ; elses tend to do nothing...
 
-(defun is-it-a-dot? (x y)
-  (declare (type fixnum x y))
-  (= 0 x y)) ;this is just for testing purposes, it should solve the 2x2 board, and I don't want it going everywhere.
+   ; debug line: outputs the x and y of the starting box
+   (values start-pt-x start-pt-y)
+   ; So unless the board was completely blank, start-pt-x and start-pt-y should have a 
+   ; square with a number in it.  It favors 3s over 2s, and 2s over 1s.  It overlooks spaces
+   ; and zeroes.  
+   ; DFS from the upper-left corner of the number...
+   (if (dfs (- start-pt-x 1) (- start-pt-y 1) board) (zomg-hax-win board) 
+       ; else (ie you don't win) DFS from the bottom-right corner...
+       (if (dfs (+ start-pt-x 1) (+ start-pt-y 1) board) (zomg-hax-win board) () )
+   ))
 
-;  (and (evenp x) (evenp y)))
+  ; Are we having fun yet?
+  ; I wish to do this recursively. It may make the code a little easier, but perhaps
+  ; make the process slower...
+  ; 
+  (defun dfs (x y board ) ; maybe add a depth so that we don't get too far in?
+    ())
 
+  ; --- more notes... ---
+  ; Root behavior will be a chain of ifs...
+  ; if (can go up && !came from up)  {go up}
+  ; else if (can go right && ! came from right) {go right}
+  ; ...
+  ; at the end:
+  ; else {go back}
+  ; - Going backwards: 
+  ; Since dfs only checks each direction once per node, one doesn't
+  ; necessarily have to remember each direction you came from.
+  ; When you reach a line (provided the node has only one line coming from it) 
+  ; then you've exhausted all possibilities, so back up.
+  ; - Can go X :
+  ; Only checks the LINE COUNT of the affected squares.  If it does not EXCEED the 
+  ; restraint, then it is a legal search-move.
+  ; If the space already is occupied, that is the direction you came from.
+  ; - Finding the solution: 
+  ; If your current node has two lines coming from it, and it passed the "can go x" function,
+  ; run check-board.  it'll keep board-checking to a minimum.  if yes, you win.  If not, 
+  ; IMMEDIATELY back up.
 
-;; 1 check if solved.  if so, you are win.
-;; 2 check if there is more than 1 line leaving
-;;   If there is, and the board does not check out,
-;;   you are error.  Back up/prune.
-;; 3 dfs in all directions not the line.
-;;   this involves
-;;   1 putting a line in the direction we are going
-;;   2 pushing the move into the moves list
-;;   Last; calling dfs with the coordinates offset by 2
+  ;; --- Placeholder ---
+  ; For when the AI wins.
+  (defun zomg-hax-win (board)
+      (format t "ZOMG HAX YOU WIN") )
 
-;; ----little idea----
+;; ----STUPID idea----
 ;; What I want to do is rank the three (or less) available 
 ;; moves by the probability that there will 
 ;; be a line...  So cells with a 3 get a higher priority over 
@@ -79,19 +152,21 @@
 ;; that edge's adjacent cells - there will be two for each possible
 ;; move.  So an edge with two [3]s next to it will get higher priority
 ;; than a [2] and a blank.
-;; ----/little idea----
-
-;; Perhaps ranking isn't such a good idea.  (tested it out on a few boards)
-;; But finding a beter starting point is good.  
-;; so 
-;; A. find a good starting point
-;; B. Blind search :( until you get an answer.
-;; going too far can easily become an explosion...
-(defun dfs (board x y moves) ; maybe add a depth so that we don't get too far in?
-  ())
+;; Then you can STEAL FIZZY LIFTING DRINKS - and BUMP into the CEILING
+;; that has to be WASHED and STERILIZED so you GET NOTHING!
+;; You LOSE!
+;; GOOD DAY SIR!
+;; ----/STUPID idea----
+;; I said GOOD DAY!
 
 ;; we can add back tracking guides in later, such as if it was next to a 3 and four spaces would be covered from the expansion, go back.
 
+
+(defun is-it-a-dot? (x y)
+  (declare (type fixnum x y))
+  (= 0 x y)) ;this is just for testing purposes, it should solve the 2x2 board, and I don't want it going everywhere.
+
+;  (and (evenp x) (evenp y)))
 
 
 ;HFS, don't look at anything below, start on your own please.
