@@ -5,8 +5,8 @@
 (eval-when (:compile-toplevel)
   (defparameter *common-optimization-settings*
     '(optimize
-      (speed 0)
-      (safety 3)
+      (speed 3)
+      (safety 0)
       (space 0)
       (debug 0)
       (compilation-speed 0))
@@ -14,6 +14,8 @@
 
 (defconstant +X+ 0)
 (defconstant +Y+ 1)
+
+(declaim (inline is-line check-space check-node is-vertex? is-face?))
 
 (defun slither ()
   "Game goes here"
@@ -31,13 +33,11 @@ if you wish to quit, type \"quit\" at the game prompt.~&")
             (progn
               (format t "Loading game1.txt")
               (probe-file "game1.txt")
-              (game-loop (multiple-value-call #'parse-board
-                           (read-board-from-file "game1.txt"))))
+              (game-loop (parse-board (slurp-file "game1.txt"))))
             (progn
               (format t "Please enter a file name")
               (format t "(no quotes, e.g. game1.txt not \"game1.txt\")")
-              (game-loop (multiple-value-call #'parse-board
-                           (read-board-from-file (loop-until-file-exists))))))))
+              (game-loop (parse-board (slurp-file (loop-until-file-exists))))))))
 
 
 
@@ -54,7 +54,7 @@ if you wish to quit, type \"quit\" at the game prompt.~&")
     (loop
        (print-board board) ; 1.Print Board
        (loop for move = (query-move) ; 2. Query player
-          ;;do (format t "~A" move)
+          ;; do (format t "~S!&" move)
           do (when (string-equal "quit" (string-trim " " move))
                (format t "Quitting current game")
                (return-from game-loop))
@@ -65,7 +65,7 @@ if you wish to quit, type \"quit\" at the game prompt.~&")
           do (setf move (parse-move move board))
           until move
           finally (progn
-                    ;;(format t "~A" move)
+                    ;; (format t "~A~&" move)
                     (push move moves)
                     (place-move move board)))
        (if (check-board board)
@@ -101,7 +101,8 @@ if you wish to quit, type \"quit\" at the game prompt.~&")
                  (if (= 1 (length (caddr possible-move)))
                      (valid-move-p (character (caddr possible-move)))
                      nil))
-            (progn ;(format t "we have a vaild move,maybe")
+            (progn
+              ;; (format t "we have a vaild move,maybe")
               (list (parse-integer (car possible-move))
                     (parse-integer (cadr possible-move))
                     (character (caddr possible-move))))
@@ -194,79 +195,73 @@ if you wish to quit, type \"quit\" at the game prompt.~&")
 ;; Must be one single continuous loop (out-degree of each vertex is 2)
 ;; Must not violate the numbers
 
-(defun read-board-row (current-line-number)
-  (format t "~&Please insert ~:r line~&" current-line-number))
-
-(defun read-board-dimensions ()
-  (format t "What are the dimensions of the board?~&")
-  (format t "Enter as NxM, where N and M are numbers.~&")
-  (let
-      ((dimensions (mapcar #'parse-integer
-                           (split-sequence #\x (read-line)
-                                           :remove-empty-subseqs t))))
-    (cons (car dimensions) (cadr dimensions))))
-
-
-
-;;; Loop
+;;; loop-until-file-exists
 (defun loop-until-file-exists ()
   (loop for filename = (read-line *query-io*)
      until (probe-file filename)
      do (format t "Incorrect file name")
      finally (return filename)))
 
-;;; Read in a board from a file
-(defun read-board-from-file (filename)
-  (with-open-file (file-stream filename :direction :input)
-    (let* ((board-size (split-sequence #\Space (read-line file-stream) :remove-empty-subseqs t)) ; We are reading the first line for the dimensions of the board.
-           (height (parse-integer (cadr board-size))))
-      (values (mapcar #'parse-integer board-size)
-              (loop for i from 1 to height
-                 ;;do (format t "Reading ~:r line...~&" i)
-                 collecting (read-line file-stream))))))
-
 ;; Tests for reading game from a file
+(defun slurp-file (filename)
+  (with-open-file (stream filename)
+    (loop for line = (read-line stream nil nil)
+       while line
+       collecting line into lines
+       finally (return lines))))
 
-(define-test read-board-from-file
-  (assert-equal (MULTIPLE-VALUE-LIST (read-board-from-file "game1.txt"))
-                '((2 2)
-                  ("3 3"
-                   "n n")))
-  (assert-equal (MULTIPLE-VALUE-LIST (read-board-from-file "game2.txt"))
-                '((5 5)
-                  ("n n n 2 0"
-                   "2 3 2 n 2"
-                   "2 1 n n 3"
-                   "n 1 2 n 3"
-                   "n 2 n n n"))))
+(define-test slurp-board
+  (assert-equal '("33"
+                  "  ")
+                (slurp-file "game1.txt"))
+  (assert-equal   '("nnn20"
+                    "232n2"
+                    "21nn3"
+                    "n12n3"
+                    "n2nnn")
+                  (slurp-file "game2.txt")))
 
 ;; Parse the board read in from file or user.
 ;; (multiple-value-list (read-board-from-file "game2.txt")
 
-(defun parse-board (dimensions strings)
-  ;;(format t "~A" strings)
-  (let ((board (make-properly-sized-array dimensions)))
+(defun parse-board (strings)
+  ;; (format t "~A" (elt strings 0))
+  (let ((board (make-properly-sized-array (list (length (car strings))
+                                                (length strings)))))
     ;;(print (array-dimensions board))
     (loop :for row fixnum :from 0 :to (1- (array-dimension board +X+))
-       ;;:do (format t "row #~d~&" row)
-       :do (loop :for column :from 0 :to (1- (array-dimension board +Y+))
+       :for row-string = nil
+       :when (oddp row) :do (setf row-string (elt strings (/ (1- row) 2)))
+       ;; :do (format t "row #~d is ~S~&" row row-string)
+       :do (loop :for column fixnum :from 0 :to (1- (array-dimension board +Y+))
               ;; :do (format t "row# ~D column #~d~&" row column)
               ;; :do (format t "~A~&" board )
-              :do (cond ((and (evenp row) (evenp column)) ;+
+              :do (cond ((is-vertex? row column) ;+
                          (setf (aref board row column) #\+))
-                        ((and (oddp row) (oddp column)) ;fill faces
+                        ((is-face? row column) ;fill faces
                          (setf (aref board row column)
                                ;;if a number, fill a number otherwise, it is not a number so use a space
-                               (if (parse-integer (nth (/ (1- column) 2)(split-sequence #\Space (nth (/ (1- row) 2) strings))) :junk-allowed t)
-                                   (parse-integer (nth (/ (1- column) 2)(split-sequence #\Space (nth (/ (1- row) 2) strings))) :junk-allowed t)
-                                   #\Space))))))
+                               (if (parse-integer (string (elt row-string (/ (1- column) 2))) :junk-allowed t) ;a number
+                                   (parse-integer (string (elt row-string (/ (1- column) 2))) :junk-allowed t);(fill with that number)
+                                   #\Space)))))) ;else with a space
     board))
 
+(defun is-vertex? (x y)
+  (declare #.*common-optimization-settings* (type fixnum x y))
+  (and (evenp x) (evenp y)))
+(defun is-face? (x y)
+  (declare #.*common-optimization-settings* (type fixnum x y))
+  (and (oddp x) (oddp y)))
+
+
 (defun make-properly-sized-array (dimensions)
-  (make-array (list (proper-size (cadr dimensions)) (proper-size (car dimensions))) :initial-element #\Space))
+  (let ((x (proper-size (cadr dimensions)))
+        (y (proper-size (car dimensions))))
+    ;; (format t "~&proper size is ~Dx~D~&" x y)
+    (make-array (list x y) :initial-element #\Space)))
 
 (defun proper-size (dimension)
-                                        ;(format t "proper-dimension is ~D~&" (1+ (* 2 dimension)))
+  ;;(format t "proper-dimension is ~D~&" (1+ (* 2 dimension)))
   (1+ (* 2 dimension)))
 
 (defun print-board (board)
@@ -324,10 +319,6 @@ if you wish to quit, type \"quit\" at the game prompt.~&")
 ;;          do (check-board *answered-board*)))
 
 
-
-;(declaim (inline is-line check-space check-node))
-
-
 (defun check-board (view)
   (declare   #.*common-optimization-settings*
              (type array view))
@@ -337,6 +328,8 @@ if you wish to quit, type \"quit\" at the game prompt.~&")
         (y 1)
         (return-val T))
     (declare (type fixnum x y x-limit y-limit))
+    ;;(format t "~&Checking Board!!!~&")
+
     ;; Make two functions here, and do something like
                                         ; (if (and (check-spaces ...) (check-nodes ...))
                                         ;     (you-win)
@@ -356,7 +349,7 @@ if you wish to quit, type \"quit\" at the game prompt.~&")
          (progn
            (setf y 1)
            (return))))
-    ;; end of checking the spaces
+    ;; end of checking the spac\es
     ;; now check the pluses
     (setf x 0)
     (setf y 0)
@@ -382,17 +375,29 @@ if you wish to quit, type \"quit\" at the game prompt.~&")
            (type fixnum x y)
            (inline is-line))
   (let ((goal (aref view y x)))
-    ;;(format t "goal = ~D~&" goal)
+    ;; (format t "~&Checking Space!!!~&")
     (if (not (characterp goal))
         (progn
-          (let ((current (the fixnum (+ (is-line (1+ y) x view)
-                                        (is-line (1- y) x view)
-                                        (is-line y (1+ x) view)
-                                        (is-line y (1- x) view)))))
+          (let ((current (loop for value in (list (is-line (1+ y) x view)
+                                                  (is-line (1- y) x view)
+                                                  (is-line y (1+ x) view)
+                                                  (is-line y (1- x) view))
+                            with x fixnum = 0
+                            when value do (setf x (1+ x))
+                            finally (return x))))
+            ;; (the fixnum (+  (is-line (1+ y) x view)
+            ;;                        (is-line (1- y) x view)
+            ;;                        (is-line y (1+ x) view)
+            ;;                        (is-line y (1- x) view)))))
             (declare (type fixnum current))
             ;;(format t "goal = ~D current = ~D" goal current)
             (if (= current goal) T nil)))
         T)))
+
+
+;; constants for the solution checker
+(defconstant +goal+ 0 "No edges lead away")
+(defconstant +goal-two+ 2 "Exactly two edges lead away")
 
 ;; Here is a bit more tricky.  Gotta see where we are.
 ;; return true if current matches either goal or goal-two
@@ -401,22 +406,25 @@ if you wish to quit, type \"quit\" at the game prompt.~&")
   "Return true if there is an out-degree of 0 or 2. This means that the node is individually valid."
   (declare #.*common-optimization-settings*
            (type fixnum x y))
-  (let (;(x-limit (- (array-dimension board +X+) 1))
-        ;(y-limit (- (array-dimension board +Y+) 1))
-        (goal 0)
-        (goal-two 2)
+  (let (;;(x-limit (- (array-dimension board +X+) 1))
+        ;;(y-limit (- (array-dimension board +Y+) 1))
         (current 0))
-    (declare (type fixnum x-limit y-limit goal goal-two current))
+    (declare (type fixnum x-limit y-limit current))
+    ;;(format t "~&Checking Node!!!~&")
     ;; if the x value is NOT less than zero, do the math.
     (if (not (< (1- x) 0))
-        (setf current (the fixnum (+ current (is-line y (1- x) board)))))
+        (if (is-line y (the fixnum (1- x)) board)
+            (incf current)))
     (if (not (< (1- y) 0))
-        (setf current (the fixnum (+ current (is-line (1- y) x board)))))
+        (if (is-line (the fixnum (1- y)) x board)
+            (incf current)))
     (if (not (> (1+ x) (1- x-limit)))
-        (setf current (the fixnum (+ current (is-line y (1+ x) board)))))
+        (if (is-line y (the fixnum (1+ x)) board)
+            (incf current)))
     (if (not (> (1+ y) (1- y-limit)))
-        (setf current (the fixnum (+ current (is-line (1+ y) x board)))))
-    (if (or (= current goal) (= current goal-two) ) T nil)))
+        (if (is-line (the fixnum (1+ y)) x board)
+            (incf current)))
+    (if (or (= current +goal+) (= current +goal-two+) ) T nil)))
 
 ;;;; is-line
 ;; Pass in the position in the array
@@ -426,12 +434,13 @@ if you wish to quit, type \"quit\" at the game prompt.~&")
            (type fixnum x y))
   "Pass in the position in the array
 If it is a line, return a 1"
+  ;; (format t "~&is-line!!!~&")
   (let ((char (aref view y x)))
     (declare (type character char))
     (case char
-      (#\| 1)
-      (#\- 1)
-      (#\Space 0))))
+      (#\| t)
+      (#\- t)
+      (#\Space nil))))
 
 (define-test checker
   (let ((game1solution (make-array '(5 5)
@@ -452,18 +461,30 @@ If it is a line, return a 1"
 
 
 ;;;;Arbitrary benchmark
-;; (defparameter *game2solution* (make-array '(11 11)
+;; (let ((*game2solution* (make-array '(11 11)
 ;;                                    :initial-contents (with-open-file (in "game2solution.txt")
 ;;                                                        (loop for line = (read-line in nil nil)
 ;;                                                           while line
 ;;                                                           collect line into lines
-;;                                                           finally (return lines)))))
-;; (time (loop for x from 1 to 150000
-;;                do (check-board game2solution)))
+;;                                                           finally (return lines))))))
+;;   (time (loop for x from 1 to 150000
+;;            do (check-board *game2solution*))))
 
-(defun slurp-it (filename)
-           (with-open-file (stream filename)
-             (loop for line = (read-line stream nil nil) 
-                while line
-                collecting line into lines
-                finally (return lines))))
+
+
+(defun tourney-to-single (pathname)
+  (loop for line in (slurp-file pathname)
+     for parse = (split-sequence:split-sequence #\. line :remove-empty-subseqs t)
+     with current-file-number = 0
+     when (< (length (car parse)) 3) do (if (car parse)
+                                            (setf parse (cons (car parse) nil)))
+     when parse do (if (< (length (car parse)) 3)
+                       (setf current-file-number (car parse)))
+                                        ;do (format t "board~a~&" current-file-number)
+     do (format t "~s~&" (concatenate 'string "board" current-file-number))
+     do (with-open-file (stream (concatenate 'string "board" current-file-number ".txt")
+                                :direction :output
+                                :if-exists :append
+                                :if-does-not-exist :create)
+          (if (> (length (car parse)) 3) (write-line (car parse) stream)))
+     collect parse into lines finally (return lines)))

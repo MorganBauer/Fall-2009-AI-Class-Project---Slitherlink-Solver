@@ -27,10 +27,10 @@
 
     (find-a-plausible-starting-location-then-dfsolve) ; see below
     
-    (loop for x from 0 to (array-dimension board +X+) by 2
-       :do (loop for y from 0 to (array-dimension board +Y+) by 2
+    (loop for x fixnum from 0 to (array-dimension board +X+) by 2
+       :do (loop for y fixnum from 0 to (array-dimension board +Y+) by 2
               ;; make a function pass it in.
-              :do (if (is-it-a-dot? x y) ; is this a dot, check ;;don't need this, I think
+              :do (if (is-vertex? x y) ; is this a dot, check ;;don't need this, I think
                       (progn
                         (assert (evenp x))
                         (assert (evenp y))
@@ -56,8 +56,8 @@
   (let ((start-pt-x nil)
        (start-pt-y nil))
   ; Check for 3's on the board
-  (loop for x from 1 to (- (array-dimension board +X+) 2) by 2 
-     :do (loop for y from 1 to (- (array-dimension board +Y+) 2) by 2
+  (loop for x fixnum from 1 to (- (array-dimension board +X+) 2) by 2 
+     :do (loop for y fixnum from 1 to (- (array-dimension board +Y+) 2) by 2
 	 :do (if (typep (aref board x y) 'integer)
 		 (if (= 3 (aref board x y))
 	                (progn
@@ -71,8 +71,8 @@
   ; only check for twos if there are no threes.
   ; Will skip over this if start-pt-x is not nil
   (if (typep start-pt-x (type-of nil)) ; checks by type so there are no errors...
-      (loop for x from 1 to (array-dimension board +X+) by 2 
-      :do (loop for y from 1 to (array-dimension board +Y+) by 2
+      (loop for x fixnum from 1 to (array-dimension board +X+) by 2 
+      :do (loop for y fixnum from 1 to (array-dimension board +Y+) by 2
           :do (if (typep (aref board x y) 'integer)
 		 (if (= 2 (aref board x y))
 	                (progn
@@ -84,8 +84,8 @@
    (if (typep start-pt-x 'integer) (return) () )
    ) () ) ; else does nothing...
   (if (typep start-pt-x (type-of nil)) ; checks by type so there are no errors...
-      (loop for x from 1 to (array-dimension board +X+) by 2 
-      :do (loop for y from 1 to (array-dimension board +Y+) by 2
+      (loop for x fixnum from 1 to (array-dimension board +X+) by 2 
+      :do (loop for y fixnum from 1 to (array-dimension board +Y+) by 2
           :do (if (typep (aref board x y) 'integer)
 		 (if (= 1 (aref board x y))
 	                (progn
@@ -106,7 +106,7 @@
    (if (dfs (- start-pt-x 1) (- start-pt-y 1) board) (zomg-hax-win board) 
        ; else (ie you don't win) DFS from the bottom-right corner...
        (if (dfs (+ start-pt-x 1) (+ start-pt-y 1) board) (zomg-hax-win board) () )
-   ))
+   )))
 
   ; Are we having fun yet?
   ; I wish to do this recursively. It may make the code a little easier, but perhaps
@@ -139,7 +139,7 @@
   ;; --- Placeholder ---
   ; For when the AI wins.
   (defun zomg-hax-win (board)
-      (format t "ZOMG HAX YOU WIN") )
+      (format t "ZOMG HAX YOU WIN"))
 
 ;; ----STUPID idea----
 ;; What I want to do is rank the three (or less) available 
@@ -162,11 +162,7 @@
 ;; we can add back tracking guides in later, such as if it was next to a 3 and four spaces would be covered from the expansion, go back.
 
 
-(defun is-it-a-dot? (x y)
-  (declare (type fixnum x y))
-  (= 0 x y)) ;this is just for testing purposes, it should solve the 2x2 board, and I don't want it going everywhere.
 
-;  (and (evenp x) (evenp y)))
 
 
 ;HFS, don't look at anything below, start on your own please.

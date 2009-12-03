@@ -1,13 +1,12 @@
-16 12
-2 2 n 1 n 3 3 n 0 n 3 n n 3 n n
-n n 1 n n 1 1 n n 1 n n 3 n 2 2
-2 n 3 2 1 n n 1 n 2 n 1 n n 3 3
-1 n n 1 2 n 0 n n 3 n n n 2 n 1
-n 3 n n 1 1 n 3 n n 1 2 2 n n n
-n 2 0 2 n 3 1 0 n 1 n 2 2 n 1 n
-3 n n 2 n n n n n n n n n 2 n 3
-n 2 n n 1 3 n 2 n 3 2 1 n 2 n 1
-2 n 1 n 2 n 2 2 n 3 2 n 2 1 2 n
-n 3 2 n n 3 1 n n n 0 n 2 n n 3
-n 3 2 n n n n 2 n n n 2 2 3 n n
-1 n n 3 n 2 3 2 1 3 n 2 n 3 n 1
+22n1n33n0n3nn3nn
+nn1nn11nn1nn3n22
+2n321nn1n2n1nn33
+1nn12n0nn3nnn2n1
+n3nn11n3nn122nnn
+n202n310n1n22n1n
+3nn2nnnnnnnnn2n3
+n2nn13n2n321n2n1
+2n1n2n22n32n212n
+n32nn31nnn0n2nn3
+n32nnnn2nnn223nn
+1nn3n23213n2n3n1
