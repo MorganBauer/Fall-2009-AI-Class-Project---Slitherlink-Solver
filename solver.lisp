@@ -1,10 +1,15 @@
 (in-package #:slither)
 
-
+;up  x-
+;left y-
+;right y+
+;down x+
 
 ;;;; ACHTUNG!!!
 ;; Upon furthur review, I believe it would be simplest to dfs based on the points.
 ;; this is not what I have below, but something similar follows from what I have below. Do an 'is-point?' function instead to check where points are, then simply dfs from the direction that is not already occupied. if there are more than two edges leading away from the current point, return failure, so that we backtrack.
+;; -mhb
+;;;;
 
 ;;also, almost certainly we can use a macro at some point for shortening stuff up, but probably don't need too.
 
@@ -13,11 +18,15 @@
 
 (defun solve (board)
   (let ((starting-time (get-universal-time)) ; remember starting time
+        (ending-time nil)
         (moves nil)) ; create empty list for moves
     ;; when dfs'ing on dots, we can go from 0 to (1- dimension-limit) by 2
     ;; Perhaps instead of picking an arbitrary starting position, start at one of the squares that
     ;; actually contains a number other than zero (therefore one of those four spaces has to have a line)
     ;; That way we avoid marking a place where there may not need a line at all.
+
+    (score-and-find-a-plausible-starting-location) ; see below
+    
     (loop for x from 0 to (array-dimension board +X+) by 2
        :do (loop for y from 0 to (array-dimension board +Y+) by 2
               ;; make a function pass it in.
@@ -28,17 +37,24 @@
                         :do (format t "~&dfs at x:~A,y:~A~&" x y)
                         (if (dfs board x y moves) ; if it returns true, we have found a solutio
                             (progn
+                              (setf ending-time (get-universal-time))
                               (format t "we have found the solution")
                               (print-board board)
                               (print-moves (nreverse moves))
-                              (format t "~&Solve took ~D seconds" (- (get-universal-time)
-                                                                   starting-time))
+                              (format t "~&Solve took ~D seconds" (- ending-time
+                                                                     starting-time))
                               t))))))
     (format t "~&holy moly, there is no solution!~%This should not be possible!~&")))
 
+
+(defun score-and-find-a-plausible-starting-location (board)
+  ;go for it dana. I'll work on it some later
+  ())
+
 (defun is-it-a-dot? (x y)
   (declare (type fixnum x y))
-  (= 0 x y)) ;this is just for testing purposes, it should solve the 2x2 board 
+  (= 0 x y)) ;this is just for testing purposes, it should solve the 2x2 board, and I don't want it going everywhere.
+
 ;  (and (evenp x) (evenp y)))
 
 

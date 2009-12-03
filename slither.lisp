@@ -60,7 +60,7 @@ if you wish to quit, type \"quit\" at the game prompt.~&")
                (return-from game-loop))
           do (when (string-equal "solve" (string-trim " " move))
                (format t "Solving")
-               (solve board)
+               (time (solve board))
                (return-from game-loop))
           do (setf move (parse-move move board))
           until move
@@ -193,15 +193,6 @@ if you wish to quit, type \"quit\" at the game prompt.~&")
 ;;;; Constraints of solving the game
 ;; Must be one single continuous loop (out-degree of each vertex is 2)
 ;; Must not violate the numbers
-
-;;; Read in a board from the user
-(defun read-board-from-user ()
-  (let
-      ((dimensions (read-board-dimensions)))
-    (format t "Enter the lines with spaces in between the numbers~&")
-    (format t "and using 'n' for a blank space.~&")
-    (loop :for i :from 1 :to (cdr dimensions) ;; this is the y/height
-       collecting (read-board-row i))))
 
 (defun read-board-row (current-line-number)
   (format t "~&Please insert ~:r line~&" current-line-number))
