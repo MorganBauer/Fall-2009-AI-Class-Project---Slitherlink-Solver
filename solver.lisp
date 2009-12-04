@@ -21,10 +21,13 @@
         (ending-time nil)
         (moves nil)) ; create empty list for moves
     ;; when dfs'ing on dots, we can go from 0 to (1- dimension-limit) by 2
-    ;; Perhaps instead of picking an arbitrary starting position, start at one of the squares that
-    ;; actually contains a number other than zero (therefore one of those four spaces has to have a line)
+    ;; Perhaps instead of picking an arbitrary starting position,
+    ;; start at one of the squares that
+    ;; actually contains a number other than zero
+    ;; (therefore one of those four spaces has to have a line)
     ;; That way we avoid marking a place where there may not need a line at all.
-
+    (apply-x-marks board)
+    
     (find-a-plausible-starting-location-then-dfsolve) ; see below
     
     (loop for x fixnum from 0 to (array-dimension board +X+) by 2
@@ -46,6 +49,24 @@
                               t))))))
     (format t "~&holy moly, there is no solution!~%This should not be possible!~&")))
 
+
+;; (defmacro loop-over-vertexes (board)
+;;   (loop for x fixnum from 0 to (array-dimension board +X+) by 2
+;;      :do (loop for y fixnum from 0 to (array-dimension board +Y+) by 2
+;; (defmacro loop-over-faces (board)
+;;   (loop for x fixnum from 1 to (1- (array-dimension board +X+)) by 2
+;;      :do (loop for y fixnum from 1 to (1- (array-dimension board +Y+)) by 2
+              
+;;;; Apply the x marks, only apply where we can be sure!!!
+(defun apply-x-marks (board)
+  (loop for x fixnum from 1 to (1- (array-dimension board +X+)) by 2
+     :do (loop for y fixnum from 1 to (1- (array-dimension board +Y+)) by 2
+            do (if (eql (aref board x y) 0)
+                   (setf (aref board x (1+ y)) #\x
+                         (aref board x (1- y)) #\x
+                         (aref board (1+ x) y) #\x
+                         (aref board (1- x) y) #\x))))
+  board)
 
 (defun find-a-plausible-starting-location-then-dfsolve (board)
   ; A good starting location will be a cross that has a higher number on it.

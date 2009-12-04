@@ -228,7 +228,7 @@ if you wish to quit, type \"quit\" at the game prompt.~&")
   ;; (format t "~A" (elt strings 0))
   (let ((board (make-properly-sized-array (list (length (car strings))
                                                 (length strings)))))
-    ;;(print (array-dimensions board))
+    (print (array-dimensions board))
     (loop :for row fixnum :from 0 :to (1- (array-dimension board +X+))
        :for row-string = nil
        :when (oddp row) :do (setf row-string (elt strings (/ (1- row) 2)))
