@@ -5,29 +5,30 @@
 (eval-when (:compile-toplevel)
   (defparameter *common-optimization-settings*
     '(optimize
-      (speed 3)
-      (safety 0)
+      (speed 0)
+      (safety 3)
       (space 0)
-      (debug 0)
+      (debug 3)
       (compilation-speed 0))
     "The common optimization settings used by declaration expressions."))
 
 (defconstant +X+ 0)
 (defconstant +Y+ 1)
 
-(declaim (inline is-line check-space check-node is-vertex? is-face?))
+;; (declaim (inline is-line check-space check-node is-vertex? is-face?))
 
 (defun slither ()
   "Game goes here"
   (format t "Welcome to slither~&")
   (format t "The goal of the game is to make a single continuous loop
-around the board without crossing or meeting up.
-There is only one solution.
-Moves are made in triplets like \"1 3 t\"
-This signifies the box at 1 down and 3 over,
-with the line being placed above the box.
-If there is already a line there, it is removed.
-if you wish to quit, type \"quit\" at the game prompt.~&")
+   around the board without crossing or meeting up.
+Tips -
+    There is only one solution.
+    Moves are made in triplets like \"1 3 t\"
+        This signifies the box at 1 down and 3 over,
+        with the line being placed above the box.
+    If there is already a line there, it is removed.
+    If you wish to quit, type \"quit\" at the game prompt.~&")
   (loop while (y-or-n-p "Play slither?")
      do (if (y-or-n-p "Load game automatically?(You can choose to load from a filename later)")
             (progn
@@ -38,9 +39,6 @@ if you wish to quit, type \"quit\" at the game prompt.~&")
               (format t "Please enter a file name")
               (format t "(no quotes, e.g. game1.txt not \"game1.txt\")")
               (game-loop (parse-board (slurp-file (loop-until-file-exists))))))))
-
-
-
 
 ;; 1. print board
 ;; 2. query player for a position
@@ -372,8 +370,7 @@ if you wish to quit, type \"quit\" at the game prompt.~&")
 
 (defun check-space (y x view)
   (declare #.*common-optimization-settings*
-           (type fixnum x y)
-           (inline is-line))
+           (type fixnum x y))
   (let ((goal (aref view y x)))
     ;; (format t "~&Checking Space!!!~&")
     (if (not (characterp goal))
@@ -382,13 +379,9 @@ if you wish to quit, type \"quit\" at the game prompt.~&")
                                                   (is-line (1- y) x view)
                                                   (is-line y (1+ x) view)
                                                   (is-line y (1- x) view))
-                            with x fixnum = 0
-                            when value do (setf x (1+ x))
-                            finally (return x))))
-            ;; (the fixnum (+  (is-line (1+ y) x view)
-            ;;                        (is-line (1- y) x view)
-            ;;                        (is-line y (1+ x) view)
-            ;;                        (is-line y (1- x) view)))))
+                            with num-lines fixnum = 0
+                            when value do (setf num-lines (1+ num-lines))
+                            finally (return num-lines))))
             (declare (type fixnum current))
             ;;(format t "goal = ~D current = ~D" goal current)
             (if (= current goal) T nil)))
@@ -397,6 +390,7 @@ if you wish to quit, type \"quit\" at the game prompt.~&")
 
 ;; constants for the solution checker
 (defconstant +goal+ 0 "No edges lead away")
+(defconstant +goal-one+ 1 "Exactly one edge leads away")
 (defconstant +goal-two+ 2 "Exactly two edges lead away")
 
 ;; Here is a bit more tricky.  Gotta see where we are.
@@ -455,22 +449,19 @@ If it is a line, return a 1"
                                                           while line
                                                           collect line into lines
                                                           finally (return lines))))))
+
     (assert-true (check-board game1solution))
     (assert-true (check-board game2solution))))
 
-
-
 ;;;;Arbitrary benchmark
-;; (let ((*game2solution* (make-array '(11 11)
-;;                                    :initial-contents (with-open-file (in "game2solution.txt")
-;;                                                        (loop for line = (read-line in nil nil)
-;;                                                           while line
-;;                                                           collect line into lines
-;;                                                           finally (return lines))))))
+;; (let ((game2solution (make-array '(11 11)
+;;                                  :initial-contents (with-open-file (in "game2solution.txt")
+;;                                                      (loop for line = (read-line in nil nil)
+;;                                                         while line
+;;                                                         collect line into lines
+;;                                                         finally (return lines))))))
 ;;   (time (loop for x from 1 to 150000
-;;            do (check-board *game2solution*))))
-
-
+;;            do (check-board game2solution))))
 
 (defun tourney-to-single (pathname)
   (loop for line in (slurp-file pathname)
