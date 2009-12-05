@@ -3,6 +3,12 @@ by Morgan Bauer and Dana Preble
 Load by
 (load "loader")
 
+On a linux-computer with clisp, you may run by
+
+    ./run
+
+however you will not land in the debugger if there is an error; itwill just kick you back to the command line.
+
 then do 
 (in-package slither)
 (slither)
