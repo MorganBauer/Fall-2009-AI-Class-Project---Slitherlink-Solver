@@ -200,6 +200,9 @@ Tips -
      do (format t "Incorrect file name")
      finally (return filename)))
 
+(defun read-board (pathname)
+  (parse-board (slurp-file pathname)))
+
 ;; Tests for reading game from a file
 (defun slurp-file (filename)
   (with-open-file (stream filename)
@@ -437,21 +440,18 @@ If it is a line, return a 1"
       (#\Space nil))))
 
 (define-test checker
-  (let ((game1solution (make-array '(5 5)
-                                   :initial-contents (with-open-file (in "game1solution.txt")
-                                                       (loop for line = (read-line in nil nil)
-                                                          while line
-                                                          collect line into lines
-                                                          finally (return lines)))))
-        (game2solution (make-array '(11 11)
-                                   :initial-contents (with-open-file (in "game2solution.txt")
-                                                       (loop for line = (read-line in nil nil)
-                                                          while line
-                                                          collect line into lines
-                                                          finally (return lines))))))
+  (let ((solution (read-board-solution "game1solution.txt")))
+    (assert-true (check-board solution))
+    (setf solution (read-board-solution "game2solution.txt"))
+    (assert-true (check-board solution))
+    (setf solution (read-board-solution "game2solutionFilled.txt"))
+    (assert-true (check-board solution))))
 
-    (assert-true (check-board game1solution))
-    (assert-true (check-board game2solution))))
+
+(defun read-board-solution (pathname)
+    (let ((board (slurp-file pathname)))
+      (setf board (make-array (list (length board) (length (car board)))
+                              :initial-contents board))))
 
 ;;;;Arbitrary benchmark
 ;; (let ((game2solution (make-array '(11 11)

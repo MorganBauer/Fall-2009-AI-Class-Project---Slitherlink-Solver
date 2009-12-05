@@ -22,7 +22,9 @@
 ;;  Also, it's two semicolons for a comment that is poperly indented
                                         ; single colons auto indend to way out
                                         ; here when they are on single lines
-;; you can tyre 'M-;' (Alt-Semicolon) to have it type the correct one for you.
+;; you can type 'M-;' (Alt-Semicolon) to have it type the correct one for you.
+;;
+;; Do (run-tests) to see unit tests run. Please write your own if you wish.
 ;; -mhb
 
 
@@ -57,6 +59,10 @@
     ;; actually contains a number other than zero
     ;; (therefore one of those four spaces has to have a line)
     ;; That way we avoid marking a place where there may not need a line at all.
+    ;;
+    ;; mhb-- This should preferably be passed in to another function
+    ;; rather than just being used for it's side effects, but I do not
+    ;; think that we need the original board after this, so it is okay.
     (apply-x-marks board)
 
     ;; (find-a-plausible-starting-location-then-dfsolve) ; see below
@@ -77,16 +83,6 @@
                          t))))))
                                         ;(format t "~&holy moly, there is no solution!~%This should not be possible!~&")
   )
-
-(define-test direction-checking
-  (let ((no-direction-possible (make-array '(3 3)
-                                           :initial-contents (list " | "
-                                                                   "-+-"
-                                                                   " | ")))
-        (assert-false nil (check-direction no-possible-direction 0 1))
-        (assert-false nil (check-direction no-possible-direction 1 0))
-        (assert-false nil (check-direction no-possible-direction 0 2))
-        (assert-false nil (check-direction no-possible-direction 2 0)))))
 
 ;; (defmacro loop-over-vertexes (board)
 ;;   (loop for x fixnum from 0 to (array-dimension board +X+) by 2
@@ -109,7 +105,15 @@
                          (aref board (1- x) y) #\X))))
   board)
 
-(defun find-a-plausible-starting-location-then-dfsolve (board)
+
+;; mhb--
+;; I think this should return a value of coordinates for dfs to start at.
+;; Other extra goodies to help the solver speed up are welcome,
+;; but should be put within the dfs itself, or before it
+;; in something like the apply-x-marks (which may need to be renamed
+;; as I can think of many things to add that are no x's)
+;; --mhb
+(defun find-a-plausible-starting-location-then-dfsolve (board moves)
   ;; A good starting location will be a cross that has a higher number on it.
   ;; if the number is a three, then EVERY + will guarantee a solution.
   ;; at the most, if there are no 3's, then a 2 or 1 will suffice.
@@ -175,8 +179,50 @@
 
 
 (defun dfs (board x y moves)
-  (if (and board x y moves)
-      t))
+  (declare (type fixnum x y)
+           (type array board)
+           (type list moves))
+  ;(format t "~5%")
+  (if (check-board board)
+      (return-from dfs board)
+      (progn
+        (and board x y moves))))
+
+(define-test dfs
+  (let ((solution (read-board-solution "game1solution.txt"))
+        (moves nil))
+    ;; Sanity-check to ensure that the checker actually checks.
+    (assert-true (check-board solution))
+    (assert-true (check-board (dfs solution 0 0 moves)))
+    (assert-false moves)
+    ;; Solution with full hints
+    (setf solution (read-board-solution "game2solutionFilled.txt"))
+    (assert-true (check-board (dfs solution 0 0 moves)))
+    (assert-false moves)
+    ;; solution with no hints
+    (setf solution (read-board-solution "game2solution.txt"))
+    (assert-true (check-board (dfs solution 0 0 moves)))
+    (assert-false moves)
+    ;; Filled board
+    (setf solution (read-board "game2filled.txt"))
+    (assert-true (check-board (dfs solution 0 0 nil)))
+    ;; Normal board
+    (setf solution (read-board "game2.txt"))
+    (assert-true (check-board (dfs solution 0 0 nil)))))
+
+(define-test direction-checking
+  (let ((no-direction-possible (make-array '(3 3)
+                                           :initial-contents (list " | "
+                                                                   "-+-"
+                                                                   " | "))))
+    (assert-false (check-direction no-direction-possible 0 1))
+    (assert-false (check-direction no-direction-possible 1 0))
+    (assert-false (check-direction no-direction-possible 0 2))
+    (assert-false (check-direction no-direction-possible 2 0))))
+
+(defun check-direction (board x y)
+  (and board x y))
+
 
 (defun allowable-line-x (board x)
   (declare #.*common-optimization-settings*
@@ -520,18 +566,6 @@
 
 
 ;;HFS, don't look at anything below, start on your own please.
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
