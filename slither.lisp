@@ -34,11 +34,11 @@ Tips -
             (progn
               (format t "Loading game1.txt")
               (probe-file "game1.txt")
-              (game-loop (parse-board (slurp-file "game1.txt"))))
+              (game-loop (read-board "game1.txt")))
             (progn
               (format t "Please enter a file name")
               (format t "(no quotes, e.g. game1.txt not \"game1.txt\")")
-              (game-loop (parse-board (slurp-file (loop-until-file-exists))))))))
+              (game-loop (read-board (loop-until-file-exists)))))))
 
 ;; 1. print board
 ;; 2. query player for a position
@@ -229,7 +229,7 @@ Tips -
   ;; (format t "~A" (elt strings 0))
   (let ((board (make-properly-sized-array (list (length (car strings))
                                                 (length strings)))))
-    (print (array-dimensions board))
+    ;; (print (array-dimensions board))
     (loop :for row fixnum :from 0 :to (1- (array-dimension board +X+))
        :for row-string = nil
        :when (oddp row) :do (setf row-string (elt strings (/ (1- row) 2)))
@@ -449,9 +449,9 @@ If it is a line, return a 1"
 
 
 (defun read-board-solution (pathname)
-    (let ((board (slurp-file pathname)))
-      (setf board (make-array (list (length board) (length (car board)))
-                              :initial-contents board))))
+  (let ((board (slurp-file pathname)))
+    (setf board (make-array (list (length board) (length (car board)))
+                            :initial-contents board))))
 
 ;;;;Arbitrary benchmark
 ;; (let ((game2solution (make-array '(11 11)
