@@ -27,12 +27,6 @@
 ;; Do (run-tests) to see unit tests run. Please write your own if you wish.
 ;; -mhb
 
-
-
-
-
-
-
 ;; (defconstant +up+ (list #'1- 'x))
 ;; left y-
 ;; right y+
@@ -305,7 +299,7 @@
   ;; (format t "validating node~%")
   (let ((count (connected-edge-count board x y)))
     (declare (type fixnum count))
-    (if (or (= count +goal+) (= count +goal-one+))
+    (when (or (= count +goal+) (= count +goal-one+))
         t)))
 
 ;; (defconstant +up+ (list 'x (list '1- 'y)))
@@ -337,12 +331,13 @@
                  (return (the fixnum x))))))
 
 ;; nutty attempted macro
+;; this was never going to work cause I was basing it on something broken
 ;; (macrolet ((crazy (bd direction lns)
 ;;                         `(let ((list ,direction)
 ;;                 (bd1 ,bd)
 ;;                 (ln1 ,lns))
 ;;             `(if (valid-board-position-p ,bd1 ,@list)
-;;                  (push '(is-line ,@list ,bd1) ,ln1)))))
+;;                  (push (is-line ,@list ,bd1) ,ln1)))))
 
 (define-test dfs
   (let ((solution (read-board-solution "game1solution.txt"))
@@ -359,6 +354,9 @@
     (setf solution (read-board-solution "game2solution.txt"))
     (assert-true (check-board (dfs solution 0 0 moves)))
     (assert-false moves)
+    ;; Tiny board
+    (setf solution (read-board-solution "game1.txt"))
+    (assert-true (check-board (dfs solution 0 0 moves)))
     ;; Filled board
     (setf solution (read-board "game2filled.txt"))
     ;;(assert-true (check-board (dfs solution 0 0 nil)))
@@ -367,15 +365,6 @@
     ;;(assert-true (check-board (dfs solution 0 0 nil)))))
     ))
 
-(define-test direction-checking
-  (let ((no-direction-possible (make-array '(3 3)
-                                           :initial-contents (list " | "
-                                                                   "-+-"
-                                                                   " | "))))
-    (assert-false (check-direction no-direction-possible 0 1))
-    (assert-false (check-direction no-direction-possible 1 0))
-    (assert-false (check-direction no-direction-possible 0 2))
-    (assert-false (check-direction no-direction-possible 2 0))))
 
 (define-test connected-edge-count
   (let ((4edges (make-array '(3 3)
@@ -398,256 +387,6 @@
     (assert-equal 3 (connected-edge-count 3edges 1 1))
     (assert-equal 2 (connected-edge-count 2edges 1 1))
     (assert-equal 1 (connected-edge-count 1edges 1 1))))
-
-;; (defun dfs (board x y moves depth)
-;;   (declare (type array board))
-;;   ;; (format t "~5&")
-;;   (if (> depth 60)
-;;       (progn
-;;         (print "returning depth exceeded")
-;;         (return-from dfs nil))
-;;       (if (check-board board) ; The board is solved
-;;           (progn (format t "~10%HOORAY~10%")
-;;                  (return-from dfs t))
-;;           (if (valid-node board x y)
-;;               (progn
-;;                 ;; (format t "node is valid, X=~d,Y=~D~&" x y)
-;;                 ;; (format t "current depth = ~D~& board before moving :" depth)
-;;                 ;; (print-board board)
-;;                 ;; (format t "Vertex Coords X=~2d,Y=~2D~&" x y)
-;;                 ;;;; DFS section Start dfs here
-
-;;                 ;; down (+x)
-;;                 (let ((x (1+ x))
-;;                       (y y))
-;;                   ;; (format t "check down")
-;;                   ;; (format t "    X=~2d,Y=~2D~&" x y)
-;;                   (if (and (allowable-line-x board x)
-;;                            (not (is-line x y board)))
-;;                       (progn
-;;                         ;; (format t " X=~d,Y=~D & going down ~&" x y)
-;;                         (setf (aref board x y) #\|)
-;;                         (push (cons x y) moves)
-;;                         (if (dfs board (1+ x) y moves (1+ depth))
-;;                             (return-from dfs t)
-;;                             (progn
-;;                               (pop moves)
-;;                               (setf (aref board x y) #\Space)
-;;                               ;; (format t "ALERT")
-;;                               ;; (print-board board)1
-;;                               ;; (format t "ALERT")
-;;                               ;(return-from dfs nil)
-;;                               )))))
-
-;;                 ;; up
-;;                 (let ((x (1- x))
-;;                       (y y))
-;;                   ;; (format t "check up")
-;;                   ;; (format t "      X=~2d,Y=~2D~&" x y)
-;;                   (if (and (allowable-line-x board x)
-;;                            (not (is-line x y board)))
-;;                       (progn
-;;                         ;; (format t " X=~d,Y=~D & going up ~&" x y)
-;;                         ;; (format t "  is-line = ~A ~&" (is-line x y  board))
-;;                         ;; (format t "  a-linex = ~A ~&" (allowable-line-x board x))
-;;                         ;; (format t "  a-liney = ~A ~&" (allowable-line-y board y))
-;;                         ;; (format t "     char = ~A ~&" (aref board x y))
-;;                         (setf (aref board x y) #\|)
-;;                         (push (cons x y) moves)
-;;                         (if (dfs board (1- x) y moves (1+ depth))
-;;                             (return-from dfs t)
-;;                             (progn
-;;                               (pop moves)
-;;                               (setf (aref board x y) #\Space)
-;;                               ;(return-from dfs nil)
-;;                               )))))
-
-;;                 ;; right
-;;                 (let ((x x)
-;;                       (y (1+ y)))
-;;                   ;; (format t "check right")
-;;                   ;; (format t "      X=~2d,Y=~2D~&" x y)
-;;                   (if (and (allowable-line-y board y)
-;;                            (not (is-line x y board)))
-;;                       (progn
-;;                         ;; (format t " X=~d,Y=~D & going right ~&" x y)
-;;                         ;; (format t "  is-line = ~A ~&" (is-line x y  board))
-;;                         ;; (format t "  a-linex = ~A ~&" (allowable-line-x board x))
-;;                         ;; (format t "  a-liney = ~A ~&" (allowable-line-y board y))
-;;                         ;; (format t "     char = ~A ~&" (aref board x y))
-;;                         (setf (aref board x y) #\-)
-;;                         (push (cons x y) moves)
-;;                         (if (dfs board x (1+ y) moves (1+ depth))
-;;                             (return-from dfs t)
-;;                             (progn
-;;                               (pop moves)
-;;                               (setf (aref board x y) #\Space)
-;;                               ;(return-from dfs nil)
-;;                               )))))
-
-
-
-;;                 ;; left
-;;                 (let ((x x)
-;;                       (y (1- y)))
-;;                   ;; (format t "check left")
-;;                   ;; (format t "      X=~2d,Y=~2D~&" x y)
-;;                   (if (and (allowable-line-y board y)
-;;                            (not (is-line x y board)))
-;;                       (progn
-;;                         ;; (format t " X=~d,Y=~D & going left ~&" x y)
-;;                         ;; (format t "  is-line = ~A ~&" (is-line x y  board))
-;;                         ;; (format t "  a-linex = ~A ~&" (allowable-line-x board x))
-;;                         ;; (format t "  a-liney = ~A ~&" (allowable-line-y board y))
-;;                         ;; (format t "     char = ~A ~&" (aref board x y))
-;;                         (setf (aref board x y) #\-)
-;;                         (push (cons x y) moves)
-;;                         (if (dfs board x (1- y) moves (1+ depth))
-;;                             (return-from dfs t)
-;;                             (progn
-;;                               (pop moves)
-;;                               (setf (aref board x y) #\Space)
-;;                               ;(return-from dfs nil)
-;;                               )))))
-
-
-
-
-;;                 ;(format t "ran out of moves to make, returning...")
-;;                 nil
-;;                 )))))
-
-
-
-;; (defun is-line-solver (x y board)
-;;   (declare #.*common-optimization-settings*
-;;            (type fixnum x y))
-;;   "Pass in the position in the array
-;; If it is a line, return a 1"
-;;   ;; (format t "~&is-line!!!~&")
-;;   (if (and (allowable-line-x board x)
-;;            (allowable-line-y board y))
-;;       (let ((char (aref board x y)))
-;;         (declare (type character char))
-;;         ;(format t "~@:c" char)
-;;         (case char
-;;           (#\| t)
-;;           (#\- t)
-;;           (#\Space nil)
-;;           (#\X nil)))
-;;       nil))
-
-;; (defun dfs (board x y moves depth) ; maybe add a depth so that we don't get too far in?
-;;   (declare (type array board))
-;;   (format t "~%~%before moving : depth = ~D%" depth)
-;;   (print-board board)
-;;   ;; (format t "~A~&" (check-board board))
-;;   (if (> depth  10)
-;;       (return-from dfs nil)
-;;       (if (check-board board) ; The board is solved
-;;           (return-from dfs t)
-;;           (if (valid-node board x y)
-;;               (progn
-;;                 (format t "node is valid~&")
-;;                 ;; down
-;;                 (if (and (allowable-line-x board (1+ x)) (not (is-line (1+ x) y  board))
-;;                          (not (format t "can go dn? ~A~&" (not (is-line (1+ x) y board)))))
-;;                     (progn
-
-;;                       (format t "~&down! @ ~D,~D" x y)
-;;                       (format t " from is-line = ~A ~&" (is-line (1- x) y  board))
-;;                       (push (cons (1+ x) y) moves)
-;;                       (setf (aref board  (1+ x) y) #\|)
-;;                       (if (dfs board (1+ (1+ x)) y moves (1+ depth))
-;;                           (return-from dfs t)
-;;                           (progn
-;;                             (format t "POP")
-;;                             (format t "~Dx~Dy" x y)
-;;                             (pop moves)
-;;                             ;; (print-board board)
-;;                             (format t "   ~:C~&" (aref board (1+ x) y))
-;;                             (setf (aref board (1+ x) y) #\Space)
-;;                             (return-from dfs nil))))
-;;                     nil)
-;;                 ;;left
-
-;;                 (if (and (allowable-line-y board (1- y)) (not (is-line x (1- y) board))
-;;                          (not (format t "can go left? ~A" (not (is-line x (1- y)  board ))))
-;;                          (not (format t "  @ board is ~C" (aref board x (1- y))))
-;;                          (not (format t " with c= ~A~&" (char= (aref board x (1- y)) #\-)))
-;;                          (char= (aref board x (1- y)) #\-))
-;;                     (progn
-
-;;                       (format t "~&left! @ ~D,~D" x y)
-;;                       (format t "~c" (aref board x (1- y)) )
-;;                       (format t " from is-line = ~A ~&" (is-line x (1- y)  board))
-;;                       (push (cons x (1- y)) moves)
-;;                       (setf (aref board  x (1- y)) #\-)
-;;                       (if (dfs board (1- (1- x)) y moves (1+ depth))
-;;                           (return-from dfs t)
-;;                           (progn
-;;                             (format t "POP")
-;;                             (format t "~Dx,~Dy" x y)
-;;                             (pop moves)
-;;                             ;; (print-board board)
-;;                             (format t "   ~:C~&" (aref board x (1- y)))
-;;                             (setf (aref board x (1- y)) #\Space)
-;;                             (return-from dfs nil))))
-;;                     nil)
-
-
-;;                 ;;right
-;;                 (if (and (allowable-line-y board (1+ y)) (not (is-line x (1+ y) board))
-;;                          (not (format t "can go rt? ~A" (not (is-line x (1+ y)  board ))))
-;;                          (not (format t "  @ board is ~C" (aref board x (1+ y))))
-;;                          (not (format t " with c= ~A~&" (char= (aref board x (1+ y)) #\-)))
-;;                          (char= (aref board x (1+ y)) #\-))
-;;                     (progn
-
-;;                       (format t "~&rt! @ ~D,~D" x y)
-;;                       (format t "~c" (aref board x (1+ y)) )
-;;                       (format t " from is-line = ~A ~&" (is-line x (1+ y)  board))
-;;                       (push (cons x (1+ y)) moves)
-;;                       (setf (aref board  x (1+ y)) #\-)
-;;                       (if (dfs board (1- (1- x)) y moves (1+ depth))
-;;                           (return-from dfs t)
-;;                           (progn
-;;                             (format t "POP")
-;;                             (format t "~Dx,~Dy" x y)
-;;                             (pop moves)
-;;                             ;; (print-board board)
-;;                             (format t "   ~:C~&" (aref board x (1+ y)))
-;;                             (setf (aref board x (1+ y)) #\Space)
-;;                             (return-from dfs nil))))
-;;                     nil)
-
-
-
-;;                 ;;up
-;;                 (if (and (allowable-line-x board (1- x)) (not (is-line (1- x) y board))
-;;                          (not (format t "can go up? ~A" (not (is-line (1- x) y  board ))))
-;;                          (not (format t "  @ board is ~C" (aref board (1- x) y)))
-;;                          (not (format t " with c= ~A~&" (char= (aref board (1- x) y) #\|)))
-;;                          (char= (aref board (1- x) y) #\|))
-;;                     (progn
-
-;;                       (format t "~&up! @ ~D,~D" x y)
-;;                       (format t "~c" (aref board (1- x) y) )
-;;                       (format t " from is-line = ~A ~&" (is-line (1- x) y  board))
-;;                       (push (cons (1- x) y) moves)
-;;                       (setf (aref board  (1- x) y) #\|)
-;;                       (if (dfs board (1- (1- x)) y moves (1+ depth))
-;;                           (return-from dfs t)
-;;                           (progn
-;;                             (format t "POP")
-;;                             (format t "~Dx,~Dy" x y)
-;;                             (pop moves)
-;;                             ;; (print-board board)
-;;                             (format t "   ~:C~&" (aref board (1- x) y))
-;;                             (setf (aref board (1- x) y) #\Space)
-;;                             (return-from dfs nil))))
-;;                     nil)
-;;                 )))))
 
 
 ;;; defmacro surounding-edges??
@@ -704,114 +443,6 @@
 ;; we can add back tracking guides in later, such as if it was next to a 3 and four spaces would be covered from the expansion, go back.
 
 
-
-
-
-
-;;HFS, don't look at anything below, start on your own please.
-
-
-
-
-;; ;;; We only need to be able to tell whether it is *possible*
-;; ;; that a line is at this location
-;; ;; fortunately the sum of an odd and an even is always an odd,
-;; ;; so a sum and check is much faster than
-;; ;; three logical operations and four checks.
-;; ;; Too clever for my own good? Probably.
-;; ;; Cannonical version below:
-;; ;;   (or (and (oddp x) (evenp y)) (and (evenp x) (oddp y)))
-;; (defun is-it-a-line-position? (x y)
-;;   (declare (optimize (speed 0) (safety 1))
-;;            (type fixnum x y))
-;;   (oddp (the fixnum (+ x y))))
-
-
-;; ;;Maybe go based on the  + 's (vertexes) and pick an arbitrary direction
-
-
-
-;; (defun check-node-solver (y x board)
-;;   "Return true if there is an out-degree of 0 or 1. This means that the node is individually valid."
-;;   (declare #.*common-optimization-settings*
-;;            (type fixnum x y))
-;;   (let ((x-limit (- (array-dimension board +X+) 1))
-;;         (y-limit (- (array-dimension board +Y+) 1))
-;;         (goal 0)
-;;         (current 0))
-;;     (declare (type fixnum x-limit y-limit goal current))
-;;     ;; if the x value is NOT less than zero, do the math.
-;;     (if (not (< (1- x) 0))
-;;         (setf current (the fixnum (+ current (is-line y (1- x) board)))))
-;;     (if (not (< (1- y) 0))
-;;         (setf current (the fixnum (+ current (is-line (1- y) x board)))))
-;;     (if (not (> (1+ x) (1- x-limit)))
-;;         (setf current (the fixnum (+ current (is-line y (1+ x) board)))))
-;;     (if (not (> (1+ y) (1- y-limit)))
-;;         (setf current (the fixnum (+ current (is-line (1+ y) x board)))))
-;;     (if (or (= current goal) (= current 1)) T nil)))
-
-;; 1 check if solved
-;; 2 check if there is more than 1 line leaving
-;; 3 dfs in all directions not the line.
-;;   this involves
-;;   1 putting a line in the direction we are going
-;;   2 pushing the move into the moves list
-;;   Last; calling dfs with the coordinates offset by 2
-
-;; (defun dfs (board x y moves) ; maybe add a depth so that we don't get too far in?
-;;   (format t "~%~%~%")
-;;   (print-board board)
-;;   (format t "~A" moves)
-;;   ;; current position must be >= 0, and < board dimension for x and y
-;;   ;; if not return fail
-;;   (if (check-board board)
-;;       (return-from dfs t)
-;;       (progn
-;;         ;;; this is similar to something dana did for check-node (?)
-;;         ;; first count the number of out vectors and their directions.
-;;         (if (check-node-solver y x board)
-;;             ;; second figure out which directions are available
-;;             (let ((x-limit (- (array-dimension board +X+) 1))
-;;                   (y-limit (- (array-dimension board +Y+) 1)))
-;;               (format t "~&check-node-solver says : ~A~&" (check-node-solver y x board))
-;;               (format t "going... ")
-;;               (if (and (not (< (1- x) 0)) ;not out of bounds going up
-;;                        (not (is-line-solver y (1- x) board))) ; there is not already a line there
-;;                   (progn
-;;                     (format t "up!~&")
-;;                     (push (cons x y) moves)
-;;                     (setf (aref board  (1- x) y) #\|)
-;;                     (if (dfs board (1- (1- x)) y moves)
-;;                         (return-from dfs t) ; could push move here instead
-;;                         (progn (pop moves) (setf (aref board  (1- x) y) #\Space)))))
-;;               (if (and (not (< (1- y) 0)) ; not oob left
-;;                        (not (is-line-solver (1- y) x board)))
-;;                   (progn
-;;                     (format t "left!~&")
-;;                     (push (cons x y) moves)
-;;                     (setf (aref board x (1- y)) #\-)
-;;                     (if (dfs board x (1- (1- y)) moves)
-;;                         (return-from dfs t) ; could push move here instead
-;;                         (progn (pop moves) (setf (aref board x (1- y)) #\Space)))))
-;;               (if (and (not (> (1+ x) (1- x-limit))) ; not oob down
-;;                        (not (is-line-solver y (1+ x) board)))
-;;                   (progn
-;;                     (format t "down!~&")
-;;                     (push (cons x y) moves)
-;;                     (setf (aref board  (1+ x) y) #\|)
-;;                     (if (dfs board (1+ (1+ x)) y moves)
-;;                         (return-from dfs t) ; could push move here instead
-;;                         (progn (pop moves) (setf (aref board  (1+ x) y) #\Space)))))
-;;               (if (and (not (> (1+ y) (1- y-limit))) ; not oob right
-;;                        (not (is-line-solver (1+ y) x board)))
-;;                   (progn
-;;                     (format t "right!~&")
-;;                     (push (cons x y) moves)
-;;                     (setf (aref board x  (1+ y)) #\-)
-;;                     (if (dfs board x (1+ (1+ y)) moves)
-;;                         (return-from dfs t) ; could push move here instead
-;;                         (progn (pop moves) (setf (aref board x  (1+ y)) #\Space))))))))))
 
 
 ;; possible number of solutions
