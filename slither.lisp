@@ -12,8 +12,9 @@
       (compilation-speed 0))
     "The common optimization settings used by declaration expressions."))
 
-(defconstant +X+ 0)
-(defconstant +Y+ 1)
+(defconstant +X+ (the fixnum 0))
+(defconstant +Y+ (the fixnum 1))
+
 
 ;; (declaim (inline is-line check-space check-node is-vertex? is-face?))
 
@@ -318,6 +319,14 @@ Tips -
 
 ;; (time (loop for i from 0 to 175000 ;takes approximately 1 second
 ;;          do (check-board *answered-board*)))
+;; (defun profile-check-board ()
+;;   (sb-profile:unprofile)
+;;   (sb-profile:reset)
+;;   (sb-profile:profile is-line check-space check-node check-board )
+;;   (let ((board (read-board-solution "game2solution.txt")))
+;;     (loop for x from 1 to 10000
+;;        do (check-board board)))
+;;   (sb-profile:report))
 
 
 (defun check-board (view)
@@ -332,9 +341,9 @@ Tips -
     ;;(format t "~&Checking Board!!!~&")
 
     ;; Make two functions here, and do something like
-                                        ; (if (and (check-spaces ...) (check-nodes ...))
-                                        ;     (you-win)
-                                        ;     (loop))
+    ;; (if (and (check-spaces ...) (check-nodes ...))
+    ;;     (you-win)
+    ;;     (loop))
     ;; first, check the numbers constraints
     (loop
        (loop
@@ -376,7 +385,7 @@ Tips -
            (type fixnum x y))
   (let ((goal (aref view y x)))
     ;; (format t "~&Checking Space!!!~&")
-    (if (not (characterp goal))
+    (if (numberp goal)
         (progn
           (let ((current (loop for value in (list (is-line (1+ y) x view)
                                                   (is-line (1- y) x view)
@@ -392,15 +401,15 @@ Tips -
 
 
 ;; constants for the solution checker
-(defconstant +goal+ 0 "No edges lead away")
-(defconstant +goal-one+ 1 "Exactly one edge leads away")
-(defconstant +goal-two+ 2 "Exactly two edges lead away")
+(defconstant +goal+ (the fixnum 0) "No edges lead away")
+(defconstant +goal-one+ (the fixnum 1) "Exactly one edge leads away")
+(defconstant +goal-two+ (the fixnum 2) "Exactly two edges lead away")
 
 ;; Here is a bit more tricky.  Gotta see where we are.
 ;; return true if current matches either goal or goal-two
 ;; Ignore the corresponding side if the number is negative or out-of-bounds
 (defun check-node (y x board x-limit y-limit)
-  "Return true if there is an out-degree of 0 or 2. This means that the node is individually valid."
+  "Return true if there is an out-degree of 0 or 2. This means that the node is valid."
   (declare #.*common-optimization-settings*
            (type fixnum x y))
   (let (;;(x-limit (- (array-dimension board +X+) 1))
@@ -454,12 +463,7 @@ If it is a line, return a 1"
                             :initial-contents board))))
 
 ;;;;Arbitrary benchmark
-;; (let ((game2solution (make-array '(11 11)
-;;                                  :initial-contents (with-open-file (in "game2solution.txt")
-;;                                                      (loop for line = (read-line in nil nil)
-;;                                                         while line
-;;                                                         collect line into lines
-;;                                                         finally (return lines))))))
+;; (let ((game2solution (read-board-solution "game2solution.txt")))
 ;;   (time (loop for x from 1 to 150000
 ;;            do (check-board game2solution))))
 

@@ -228,14 +228,16 @@ If it is a line, return a 1"
                           ;; (format t "     char = ~A ~&" (aref board x y))
                           (setf (aref board x y) #\|)
                           ;; check either side
-
-                          ;;
-                          (push (cons x y) moves)
-                          (if (dfs board (1+ x) y moves (1+ depth))
-                              (return-from dfs t)
+                          (if (can-continue-p board x y)
+                              ;;
                               (progn
-                                (pop moves)
-                                (setf (aref board x y) #\Space))))))
+                                (push (cons x y) moves)
+                                (if (dfs board (1+ x) y moves (1+ depth))
+                                    (return-from dfs t)
+                                    (progn
+                                      (pop moves)
+                                      (setf (aref board x y) #\Space))))
+                              (setf (aref board x y) #\Space)))))
 
                   ;; right (+y)
                   (let ((x x)
@@ -248,12 +250,16 @@ If it is a line, return a 1"
                           ;; (format t " X=~d,Y=~D & going right ~&" x y)
                           ;; (format t "     char = ~A ~&" (aref board x y))
                           (setf (aref board x y) #\-)
-                          (push (cons x y) moves)
-                          (if (dfs board x (1+ y) moves (1+ depth))
-                              (return-from dfs t)
+                          (if (can-continue-p board x y)
+                              ;;
                               (progn
-                                (pop moves)
-                                (setf (aref board x y) #\Space))))))
+                                (push (cons x y) moves)
+                                (if (dfs board x (1+ y) moves (1+ depth))
+                                    (return-from dfs t)
+                                    (progn
+                                      (pop moves)
+                                      (setf (aref board x y) #\Space))))
+                              (setf (aref board x y) #\Space)))))
 
                   ;; up (-x)
                   (let ((x (1- x))
@@ -266,12 +272,16 @@ If it is a line, return a 1"
                           ;; (format t " X=~d,Y=~D & going up ~&" x y)
                           ;; (format t "     char = ~A ~&" (aref board x y))
                           (setf (aref board x y) #\|)
-                          (push (cons x y) moves)
-                          (if (dfs board (1- x) y moves (1+ depth))
-                              (return-from dfs t)
+                          (if (can-continue-p board x y)
+                              ;;
                               (progn
-                                (pop moves)
-                                (setf (aref board x y) #\Space))))))
+                                (push (cons x y) moves)
+                                (if (dfs board (1- x) y moves (1+ depth))
+                                    (return-from dfs t)
+                                    (progn
+                                      (pop moves)
+                                      (setf (aref board x y) #\Space))))
+                              (setf (aref board x y) #\Space)))))
 
                   ;; left (-y)
                   (let ((x x)
@@ -284,20 +294,89 @@ If it is a line, return a 1"
                           ;; (format t " X=~d,Y=~D & going left ~&" x y)
                           ;; (format t "     char = ~A ~&" (aref board x y))
                           (setf (aref board x y) #\-)
-                          (push (cons x y) moves)
-                          (if (dfs board x (1- y) moves (1+ depth))
-                              (return-from dfs t)
+                          (if (can-continue-p board x y)
+                              ;;
                               (progn
-                                (pop moves)
-                                (setf (aref board x y) #\Space))))))
+                                (push (cons x y) moves)
+                                (if (dfs board x (1- y) moves (1+ depth))
+                                    (return-from dfs t)
+                                    (progn
+                                      (pop moves)
+                                      (setf (aref board x y) #\Space))))
+                              (setf (aref board x y) #\Space)))))
                   ;; (format t "ran out of moves to make, returning...")
                   nil)))))))
 
 (defun can-continue-p (board x y)
   (cond ((char= #\| (aref board x y)) ;; Vertical, so check left and right.
-         t)
+         (AND
+          (let ((y (1- y))) ;left
+            (if (valid-board-y-p board y)
+                (if (numberp (aref board x y))
+                    (>= (aref board x y) (edge-count board x y))
+                    t)
+                t))
+          (let ((y (1+ y))) ;right
+            (if (valid-board-y-p board y)
+                (if (numberp (aref board x y))
+                    (>= (aref board x y) (edge-count board x y))
+                    t)
+                t))))
         ((char= #\- (aref board x y)) ;; Horizontal, co check above and below/
-         t)))
+         (AND
+          (let ((x (1- x))) ;above
+            (if (valid-board-x-p board x)
+                (if (numberp (aref board x y))
+                    (>= (aref board x y) (edge-count board x y))
+                    t)
+                t))
+          (let ((x (1+ x))) ;below
+            (if (valid-board-x-p board x)
+                (if (numberp (aref board x y))
+                    (>= (aref board x y) (edge-count board x y))
+                    t)
+                t))))
+        ))
+
+(define-test can-continue-p
+  (let ((board (make-array '(3 3)
+                           :initial-contents (list "   "
+                                                   "-+ "
+                                                   "2| "))))
+    (setf (aref board 2 0) 2)
+    (assert-true (can-continue-p board 2 1)))
+  (let ((board (make-array '(3 3)
+                           :initial-contents (list "   "
+                                                   "-+ "
+                                                   "1| "))))
+    (setf (aref board 2 0) 1)
+    (assert-false (can-continue-p board 2 1)))
+  (let ((board (make-array '(3 3)
+                           :initial-contents (list "+ +"
+                                                   "|  "
+                                                   "+ +"))))
+    (assert-true (can-continue-p board 1 0)))
+  (let ((board (make-array '(3 3)
+                           :initial-contents (list "+ +"
+                                                   "|  "
+                                                   "+-+"))))
+    (assert-true (can-continue-p board 2 1)))
+  )
+
+
+;; (defun profile-dfs ()
+;;   (sb-profile:unprofile)
+;;   (sb-profile:reset)
+;;   (sb-profile:profile valid-board-x-p valid-board-y-p check-board is-line valid-node
+;;                       edge-count can-continue-p apply-x-marks)
+;;   (let ((board (read-board "game2.txt"))
+;;         (moves nil))
+;;     (dfs (apply-x-marks board) 0 0 moves 0))
+;;   (sb-profile:report)
+;;   (sb-profile:unprofile))
+
+
+
 
 (defun valid-board-x-p (board x)
   (declare #.*common-optimization-settings*
@@ -338,25 +417,43 @@ If it is a line, return a 1"
            (type array board))
   ;; I deem this an okay use of is-line, as I do not need the actual
   ;; direction, just a number. --mhb
-  (let ((lines nil))
-    (if (valid-board-position-p board x (the fixnum (1+ y)))
-        (push (is-line x (the fixnum (1+ y)) board) lines))
-    (if (valid-board-position-p board x (the fixnum (1- y)))
-        (push (is-line x (the fixnum (1- y)) board) lines))
-    (if (valid-board-position-p board  (the fixnum (1+ x)) y)
-        (push (is-line (the fixnum (1+ x)) y board) lines))
-    (if (valid-board-position-p board (the fixnum (1- x)) y)
-        (push (is-line (the fixnum (1- x)) y board) lines))
-    ;; (format t "~A~%" lines)
-    (loop for value in lines
-       with x fixnum = 0
-       when value do (setf x (the fixnum (1+ x)))
-       ;; The while might be wanted if we only need to know it is greater
-       ;; than 2 (or some other number) ,rather than the avtual number of edges
-       ;; while (< x 3)
-       finally (progn
-                 ;; (format t "  ~A lines connected~%" x)
-                 (return (the fixnum x))))))
+  (let (
+        ;; (count (the fixnum 0))
+        ;; (declare (type fixnum count))
+        (lines nil)
+        )
+    (declare (type list lines))
+    ;; (if (if (valid-board-position-p board x (the fixnum (1+ y)))
+    ;;         (is-line x (the fixnum (1+ y)) board))
+    ;;     (incf count))
+    ;; (if (if (valid-board-position-p board x (the fixnum (1- y)))
+    ;;     (is-line x (the fixnum (1- y)) board))
+    ;;     (incf count))
+    ;; (if (if (valid-board-position-p board  (the fixnum (1+ x)) y)
+    ;;     (is-line (the fixnum (1+ x)) y board))
+    ;;     (incf count))
+    ;; (if (if (valid-board-position-p board (the fixnum (1- x)) y)
+    ;;     (is-line (the fixnum (1- x)) y board))
+    ;;     (incf count))
+    ;; (the fixnum count))
+  ;; (format t "~A~%" lines)
+  (loop for value in (list (if (valid-board-position-p board x (the fixnum (1+ y)))
+                               (is-line x (the fixnum (1+ y)) board))
+                           (if (valid-board-position-p board x (the fixnum (1- y)))
+                               (is-line x (the fixnum (1- y)) board))
+                           (if (valid-board-position-p board  (the fixnum (1+ x)) y)
+                               (is-line (the fixnum (1+ x)) y board))
+                           (if (valid-board-position-p board (the fixnum (1- x)) y)
+                               (is-line (the fixnum (1- x)) y board)))
+     with x fixnum = 0
+     when value do (setf x (the fixnum (1+ x)))
+     ;; The while might be wanted if we only need to know it is greater
+     ;; than 2 (or some other number) ,rather than the avtual number of edges
+     ;; while (< x 3)
+     finally (progn
+               ;; (format t "  ~A lines connected~%" x)
+               (return (the fixnum x)))))
+  )
 
 ;; nutty attempted macro
 ;; this was never going to work cause I was basing it on something broken
