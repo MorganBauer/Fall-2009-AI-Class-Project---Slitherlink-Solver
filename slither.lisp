@@ -185,6 +185,15 @@ Tips -
 ;; ALSO
 ;; the 'Euler Characteristic' which is (faces + points - 2) except in this case -1 because we don't count the 'outside' as a face.
 
+(defclass face()
+  ())
+(defclass edge()
+  ((line
+   :initarg :value)
+   (visited
+    :initform nil)))
+(defclass vertex()
+  ())
 
 ;; The loop that is made, has an 'inside' and an 'outside' so, if you got stuck, you could solve the game by counting the number of crosses you make while traversing from one side of the grid to the other. The number of crossings must be even.
 
@@ -245,7 +254,9 @@ Tips -
                                ;;if a number, fill a number otherwise, it is not a number so use a space
                                (if (parse-integer (string (elt row-string (/ (1- column) 2))) :junk-allowed t) ;a number
                                    (parse-integer (string (elt row-string (/ (1- column) 2))) :junk-allowed t);(fill with that number)
-                                   #\Space)))))) ;else with a space
+                                   #\Space))) ; Else no number, and fill with a space.
+                        ((is-line? row column) ; Fill edges
+                         (setf (aref board row column) #\Space)))))
     board))
 
 (defun is-vertex? (x y)
@@ -254,6 +265,9 @@ Tips -
 (defun is-face? (x y)
   (declare #.*common-optimization-settings* (type fixnum x y))
   (and (oddp x) (oddp y)))
+(defun is-line? (x y)
+  (declare #.*common-optimization-settings* (type fixnum x y))
+  (oddp (+ x y)))
 
 
 (defun make-properly-sized-array (dimensions)

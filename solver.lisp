@@ -176,17 +176,17 @@
 
 
 
-;; mhb thinks that checking on either side of the nelwly placed line that the faces are correct, will help us back out faster
-(defun dfs (board x y moves &optional depth) ; depth for debug only
+;; mhb thinks that checking on either side of the newly placed line that the faces are correct, will help us back out faster
+(defun dfs (board x y moves); &optional (depth 0)) ; depth for debug only
   (declare #.*common-optimization-settings*
            (type fixnum x y)
            (type array board)
            (type list moves))
-  (if (> depth 32)
-      (progn
-        ;; (format t "depth exceeded, too deep, returning")
-        (return-from dfs nil))
-      (progn
+  ;; (if (> depth 32)
+  ;;     (progn
+  ;;       ;; (format t "depth exceeded, too deep, returning")
+  ;;       (return-from dfs nil))
+  ;;     (progn
         ;; (format t "~2%")
         (if (check-board board)
             ;; (progn (format t "~10%HOORAY~10%")
@@ -213,6 +213,8 @@ If it is a line, return a 1"
                              (#\x t)))))
                   ;; (format t "node-valid~%")
 
+                  ;;If there is already a line, we should follow it, otherwise dfs at point
+                  ;; do this by counting edges at point, if 2
 
                   ;; These four things should be a macro.
                   ;; down (+x)
@@ -232,7 +234,7 @@ If it is a line, return a 1"
                               ;;
                               (progn
                                 (push (cons x y) moves)
-                                (if (dfs board (1+ x) y moves (1+ depth))
+                                (if (dfs board (1+ x) y moves); (1+ depth))
                                     (return-from dfs t)
                                     (progn
                                       (pop moves)
@@ -254,7 +256,7 @@ If it is a line, return a 1"
                               ;;
                               (progn
                                 (push (cons x y) moves)
-                                (if (dfs board x (1+ y) moves (1+ depth))
+                                (if (dfs board x (1+ y) moves); (1+ depth))
                                     (return-from dfs t)
                                     (progn
                                       (pop moves)
@@ -276,7 +278,7 @@ If it is a line, return a 1"
                               ;;
                               (progn
                                 (push (cons x y) moves)
-                                (if (dfs board (1- x) y moves (1+ depth))
+                                (if (dfs board (1- x) y moves); (1+ depth))
                                     (return-from dfs t)
                                     (progn
                                       (pop moves)
@@ -298,18 +300,22 @@ If it is a line, return a 1"
                               ;;
                               (progn
                                 (push (cons x y) moves)
-                                (if (dfs board x (1- y) moves (1+ depth))
+                                (if (dfs board x (1- y) moves); (1+ depth))
                                     (return-from dfs t)
                                     (progn
                                       (pop moves)
                                       (setf (aref board x y) #\Space))))
                               (setf (aref board x y) #\Space)))))
                   ;; (format t "ran out of moves to make, returning...")
-                  nil)))))))
+                  nil)))));))
 
 (defun can-continue-p (board x y)
-  (cond ((char= #\| (aref board x y)) ;; Vertical, so check left and right.
-         (AND
+  (let ((char (aref board x y)))
+  (declare (type character char))
+  (case char
+    (#\| ;; Vertical, so check left and right.
+     (progn
+       (AND
           (let ((y (1- y))) ;left
             (if (valid-board-y-p board y)
                 (if (numberp (aref board x y))
@@ -321,9 +327,10 @@ If it is a line, return a 1"
                 (if (numberp (aref board x y))
                     (>= (aref board x y) (edge-count board x y))
                     t)
-                t))))
-        ((char= #\- (aref board x y)) ;; Horizontal, co check above and below/
-         (AND
+                t)))))
+     (#\- ;; Horizontal, co check above and below/
+         (progn
+           (AND
           (let ((x (1- x))) ;above
             (if (valid-board-x-p board x)
                 (if (numberp (aref board x y))
@@ -335,8 +342,7 @@ If it is a line, return a 1"
                 (if (numberp (aref board x y))
                     (>= (aref board x y) (edge-count board x y))
                     t)
-                t))))
-        ))
+                t))))))))
 
 (define-test can-continue-p
   (let ((board (make-array '(3 3)
@@ -417,11 +423,10 @@ If it is a line, return a 1"
            (type array board))
   ;; I deem this an okay use of is-line, as I do not need the actual
   ;; direction, just a number. --mhb
-  (let (
+  ;; (let (
         ;; (count (the fixnum 0))
         ;; (declare (type fixnum count))
-        (lines nil)
-        )
+        ;; )
     (declare (type list lines))
     ;; (if (if (valid-board-position-p board x (the fixnum (1+ y)))
     ;;         (is-line x (the fixnum (1+ y)) board))
@@ -453,7 +458,7 @@ If it is a line, return a 1"
      finally (progn
                ;; (format t "  ~A lines connected~%" x)
                (return (the fixnum x)))))
-  )
+;;)
 
 ;; nutty attempted macro
 ;; this was never going to work cause I was basing it on something broken
@@ -480,7 +485,7 @@ If it is a line, return a 1"
         (moves nil))
     ;; Tiny board
     (assert-false (check-board board))
-    (assert-true (dfs board 0 0 moves 0))
+    (assert-true (dfs board 0 0 moves))
     (assert-true (check-board board))
     ;; Filled board
     ;; Normal board
