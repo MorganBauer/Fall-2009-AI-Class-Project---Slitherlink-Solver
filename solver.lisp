@@ -62,7 +62,7 @@
     ;; mhb-- This should preferably be passed in to another function
     ;; rather than just being used for it's side effects, but I do not
     ;; think that we need the original board after this, so it is okay.
-    (apply-x-marks board)
+    (apply-hints board)
 
     ;; (find-a-plausible-starting-location-then-dfsolve) ; see below
 
@@ -91,26 +91,349 @@
 ;;   (loop for x fixnum from 1 to (1- (array-dimension board +X+)) by 2
 ;;      :do (loop for y fixnum from 1 to (1- (array-dimension board +Y+)) by 2
 
-;;;; Apply the x marks, only apply where we can be sure!!!
-(defun apply-x-marks (board)
+;;;; Apply the hints, only apply where we can be sure!!!
+(defun apply-hints (board)
   (declare (type array board))
   (loop for x fixnum :from 1 :to (1- (array-dimension board +X+)) by 2
      :do (loop :for y fixnum from 1 to (1- (array-dimension board +Y+)) by 2
             ;; might need many more cases, but let's not go crazy...
             ;; ? :when (integerp (aref board x y)) to explicitly ignore spaces
-            do (if (eql (aref board x y) 0) ; around zeroes
-                   (setf (aref board x (1+ y)) #\X
-                         (aref board x (1- y)) #\X
-                         (aref board (1+ x) y) #\X
-                         (aref board (1- x) y) #\X))))
+            do (let ((number (aref board x y)))
+                 (if (numberp number)
+                     (case number
+                       (0 (hint-zeroes board x y)) ; around zeroes
+                       (3 (hint-threes board x y))
+                       (2 (hint-twos   board x y))
+                       (1 (hint-ones   board x y))
+                       )))))
   board)
+
+
+(defun hint-zeroes (board x y)
+  (progn
+    (setf (aref board x (1+ y)) #\X
+          (aref board x (1- y)) #\X
+          (aref board (1+ x) y) #\X
+          (aref board (1- x) y) #\X)
+    (if (corner-p board x y)
+        (cond ((and (= x 1)
+                    (= y 1))
+               (setf (aref board (- x 1) (+ y 2)) #\X
+                     (aref board (+ x 2) (- y 1)) #\X))
+              ((and (= x 1)
+                    (= y (- (array-dimension board +Y+) 2)))
+               (setf (aref board (- x 1) (- y 2)) #\X
+                     (aref board (+ x 2) (+ y 1)) #\X))
+              ((and (= x (- (array-dimension board +X+) 2))
+                    (= y 1))
+               (setf (aref board (+ x 1) (+ y 2)) #\X
+                     (aref board (- x 2) (- y 1)) #\X))
+              ((and (= x (- (array-dimension board +Y+) 2))
+                    (= y (- (array-dimension board +Y+) 2)))
+               (setf (aref board (- x 2) (+ y 1)) #\X
+                     (aref board (+ x 1) (- y 2)) #\X))))
+
+    ;; test each direction
+      ;; Down
+      (let ((x (+ x 2))
+            (y y))
+        (if (valid-board-x-p board x)
+            (let ((number (aref board x y)))
+              (if (numberp (aref board x y))
+                  (case number  ;check which number, do something with it.
+                    (3 (progn
+                         (setf (aref board (1+ x) y) #\-
+                               (aref board x (1+ y)) #\|
+                               (aref board x (1- y)) #\|)))
+                    (2 t);(progn
+                         ;(setf (aref board (1+ x) y) #\-)))
+                    (1 t)
+                    (0 t))
+                  ))
+            ))
+      ;; right (+y)
+      (let ((x x)
+            (y (+ y 2)))
+        (if (valid-board-y-p board y)
+            (let ((number (aref board x y)))
+              (if (numberp (aref board x y))
+                  (case number  ;check which number, do something with it.
+                    (3 (progn
+                         (setf (aref board (1+ x) y) #\-
+                               (aref board (1- x) y) #\-
+                               (aref board x (1+ y)) #\|)))
+
+                    (2 t);(progn
+                       ;;  (setf (aref board x (1+ y)) #\|)))
+                    (1 t)
+                    (0 t))))))
+      ;; up (-x)
+      (let ((x (- x 2))
+            (y y))
+        (if (valid-board-x-p board x)
+            (let ((number (aref board x y)))
+              (if (numberp (aref board x y))
+                  (case number  ;check which number, do something with it.
+                    (3 (progn
+                         (setf (aref board (1- x) y) #\-
+                               (aref board x (1+ y)) #\|
+                               (aref board x (1- y)) #\|)))
+                    (2 t);(progn
+                         ;(setf (aref board (1- x) y) #\-)))
+                    (1 t)
+                    (0 t))))))
+      ;; left (-y)
+      (let ((x x)
+            (y (- y 2)))
+        (if (valid-board-y-p board y)
+            (let ((number (aref board x y)))
+              (if (numberp (aref board x y))
+                  (case number  ;check which number, do something with it.
+                    (3 (progn
+                         (setf (aref board (1+ x) y) #\-
+                               (aref board (1- x) y) #\-
+                               (aref board x (1- y)) #\|)))
+
+                    (2 t);(progn
+                        ; (setf (aref board x (1- y)) #\|)))
+                    (1 t)
+                    (0 t))))))))
+
+(defun corner-p (board x y)
+  (or (and (= x 1) (= y 1))
+      (and (= x 1) (= y (- (array-dimension board +Y+) 2)))
+      (and (= x (- (array-dimension board +X+) 2)) (= y 1))
+      (and (= x (- (array-dimension board +Y+) 2)) (= y (- (array-dimension board +Y+) 2)))))
+
+
+(defun hint-threes (board x y)
+  (progn ;; test each direction
+    ;; Down
+    ;; Are we in a corner?
+    (if (corner-p board x y)
+        (cond ((and (= x 1)
+                    (= y 1))
+               (setf (aref board (1- x) y) #\-
+                     (aref board x (1- y)) #\|))
+              ((and (= x 1)
+                    (= y (- (array-dimension board +Y+) 2)))
+               (setf (aref board (1- x) y) #\-
+                     (aref board x (1+ y)) #\|))
+
+              ((and (= x (- (array-dimension board +X+) 2))
+                    (= y 1))
+               (setf (aref board (1+ x) y) #\-
+                     (aref board x (1- y)) #\|))
+
+              ((and (= x (- (array-dimension board +Y+) 2))
+                    (= y (- (array-dimension board +Y+) 2)))
+               (setf (aref board (1+ x) y) #\-
+                     (aref board x (1+ y)) #\|))
+              ))
+    (let ((x (+ x 2))
+          (y y))
+      (if (valid-board-x-p board x)
+          (let ((number (aref board x y)))
+            (if (numberp number)
+                (case number  ;check which number, do something with it.
+                  (3 (setf (aref board (1- x) y) #\-
+                           (aref board (1+ x) y) #\-
+                           (aref board (- x 3) y) #\-))
+                  (2 t)
+                  (1 t)
+                  (0 t))))))
+    ;; right (+y)
+    (let ((x x)
+          (y (+ y 2)))
+      (if (valid-board-y-p board y)
+          (let ((number (aref board x y)))
+            (if (numberp number)
+                (case number  ;check which number, do something with it.
+                  (3 (setf (aref board x (1- y)) #\|
+                           (aref board x (1+ y)) #\|
+                           (aref board x (- y 3)) #\|))
+                  (2 t)
+                  (1 t)
+                  (0 t))))))
+    ;; up (-x)
+    (let ((x (- x 2))
+          (y y))
+      (if (valid-board-x-p board x)
+          (let ((number (aref board x y)))
+            (if (numberp number)
+                (case number  ;check which number, do something with it.
+                  ;; (3 t)
+                  (2 t)
+                  (1 t)
+                  (0 t))))))
+    ;; left (-y)
+    (let ((x x)
+          (y (- y 2)))
+      (if (valid-board-y-p board y)
+          (let ((number (aref board x y)))
+            (if (numberp number)
+                (case number  ;check which number, do something with it.
+                                        ;(3 t)
+                  (2 t)
+                  (1 t)
+                  (0 t))))))
+    ))
+
+(defun hint-ones (board x y)
+  (progn
+    (if (corner-p board x y)
+        (cond ((and (= x 1)
+                    (= y 1))
+               (setf (aref board (1- x) y) #\X
+                     (aref board x (1- y)) #\X))
+              ((and (= x 1)
+                    (= y (- (array-dimension board +Y+) 2)))
+               (setf (aref board (1- x) y) #\X
+                     (aref board x (1+ y)) #\X))
+
+              ((and (= x (- (array-dimension board +X+) 2))
+                    (= y 1))
+               (setf (aref board (1+ x) y) #\X
+                     (aref board x (1- y)) #\X))
+
+              ((and (= x (- (array-dimension board +Y+) 2))
+                    (= y (- (array-dimension board +Y+) 2)))
+               (setf (aref board (1+ x) y) #\X
+                     (aref board x (1+ y)) #\X))
+              ))
+    ;; test each direction
+    ;; Down
+    (let ((x (+ x 2))
+          (y y))
+      (if (valid-board-x-p board x)
+          (let ((number (aref board x y)))
+            (if (numberp number)
+                (case number  ;check which number, do something with it.
+                  (3 t)
+                  (2 t)
+                  (1 t)
+                  (0 t))))))
+    ;; right (+y)
+    (let ((x x)
+          (y (+ y 2)))
+      (if (valid-board-y-p board y)
+          (let ((number (aref board x y)))
+            (if (numberp number)
+                (case number  ;check which number, do something with it.
+                  (3 t)
+                  (2 t)
+                  (1 t)
+                  (0 t))))))
+    ;; up (-x)
+    (let ((x (- x 2))
+          (y y))
+      (if (valid-board-x-p board x)
+          (let ((number (aref board x y)))
+            (if (numberp number)
+                (case number  ;check which number, do something with it.
+                  ;; (3 t)
+                  (2 t)
+                  (1 t)
+                  (0 t))))))
+    ;; left (-y)
+    (let ((x x)
+          (y (- y 2)))
+      (if (valid-board-y-p board y)
+          (let ((number (aref board x y)))
+            (if (numberp number)
+                (case number  ;check which number, do something with it.
+                                        ;(3 t)
+                  (2 t)
+                  (1 t)
+                  (0 t))))))
+    ))
+
+(define-test corner-twos
+  (let ((board (make-array '(11 11) :initial-element #\Space))
+        (moves nil)
+        (visited (make-array '(11 11)
+                             :initial-element nil)))
+    (setf (aref board 1 1) 2)
+    (setf (aref board 1 9) 2)
+    (setf (aref board 9 1) 2)
+    (setf (aref board 9 9) 2)
+    (apply-hints board)
+    visited
+    moves
+    ;;(print-board board))
+  (assert-true t)))
+
+(defun hint-twos (board x y)
+  (progn ;; test each direction
+    (if (corner-p board x y)
+        (cond ((and (= x 1)
+                    (= y 1))
+               (setf (aref board (- x 1) (+ y 2)) #\-
+                     (aref board (+ x 2) (- y 1)) #\|))
+              ((and (= x 1)
+                    (= y (- (array-dimension board +Y+) 2)))
+               (setf (aref board (- x 1) (- y 2)) #\-
+                     (aref board (+ x 2) (+ y 1)) #\|))
+              ((and (= x (- (array-dimension board +X+) 2))
+                    (= y 1))
+               (setf (aref board (+ x 1) (+ y 2)) #\-
+                     (aref board (- x 2) (- y 1)) #\|))
+              ((and (= x (- (array-dimension board +Y+) 2))
+                    (= y (- (array-dimension board +Y+) 2)))
+               (setf (aref board (- x 2) (+ y 1)) #\|
+                     (aref board (+ x 1) (- y 2)) #\-))))
+    ;; Down
+    (let ((x (+ x 2))
+          (y y))
+      (if (valid-board-x-p board x)
+          (let ((number (aref board x y)))
+            (if (numberp number)
+                (case number  ;check which number, do something with it.
+                  (3 t)
+                  (2 t)
+                  (1 t)
+                  (0 t))))))
+    ;; right (+y)
+    (let ((x x)
+          (y (+ y 2)))
+      (if (valid-board-y-p board y)
+          (let ((number (aref board x y)))
+            (if (numberp number)
+                (case number  ;check which number, do something with it.
+                  (3 t)
+                  (2 t)
+                  (1 t)
+                  (0 t))))))
+    ;; up (-x)
+    (let ((x (- x 2))
+          (y y))
+      (if (valid-board-x-p board x)
+          (let ((number (aref board x y)))
+            (if (numberp number)
+                (case number  ;check which number, do something with it.
+                  ;; (3 t)
+                  (2 t)
+                  (1 t)
+                  (0 t))))))
+    ;; left (-y)
+    (let ((x x)
+          (y (- y 2)))
+      (if (valid-board-y-p board y)
+          (let ((number (aref board x y)))
+            (if (numberp number)
+                (case number  ;check which number, do something with it.
+                                        ;(3 t)
+                  (2 t)
+                  (1 t)
+                  (0 t))))))
+    ))
 
 
 ;; mhb--
 ;; I think this should return a value of coordinates for dfs to start at.
 ;; Other extra goodies to help the solver speed up are welcome,
 ;; but should be put within the dfs itself, or before it
-;; in something like the apply-x-marks (which may need to be renamed
+;; in something like the apply-hints (which may need to be renamed
 ;; as I can think of many things to add that are no x's)
 ;; --mhb
 (defun find-a-plausible-starting-location-then-dfsolve (board moves)
@@ -236,10 +559,8 @@ If it is a line, return a 1"
                            (let ((char (aref board x y)))
                              (declare (type character char))
                              (case char
-                               (#\| nil)
-                               (#\- nil)
-                               (#\Space t)
-                               (#\x t)))))
+                               ((#\| #\-) nil)
+                               ((#\Space #\x) t)))))
                     ;; (format t "node-valid~%")
 
                     ;;If there is already a line, we should follow it, otherwise dfs at point
@@ -248,6 +569,8 @@ If it is a line, return a 1"
                     (if (= 2 edge-count) ; follow other lines code to go here,
                         (progn ;do stuff to follow a line
                           ;;Find which edge is present, but unvisited, and visit and follow it.
+
+                          ;; Down
                           (let ((x (1+ x))
                                 (y y))
                             (if (and (valid-board-x-p board x)
@@ -325,97 +648,143 @@ If it is a line, return a 1"
                                 (y y))
                             ;; (format t "check down")
                             ;; (format t "    X=~2d,Y=~2D~&" x y)
-                            (if (and (valid-board-x-p board x)
-                                     (emptyp board x y))
-                                (progn
-                                  ;; (format t " X=~d,Y=~D & going down ~&" x y)
-                                  ;; (format t "     char = ~A ~&" (aref board x y))
-                                  (setf (aref board x y) #\|
-                                        (aref visited x y) t)
-                                  ;; check either side
-                                  (if (can-continue-p board x y)
-                                      (progn
-                                        (push (cons x y) moves)
-                                        (if (dfs board (1+ x) y moves (1+ depth) visited)
-                                            (return-from dfs t)
-                                            (progn
-                                              (pop moves)
-                                              (setf (aref board x y) #\Space
-                                                    (aref visited x y) nil))))
-                                      (setf (aref board x y) #\Space
-                                            (aref visited x y) nil)))))
+                            (if (valid-board-x-p board x)
+                                (if
+                                 (emptyp board x y)
+                                 (progn ;line is empty, so do not follow
+                                   ;; (format t " X=~d,Y=~D & going down ~&" x y)
+                                   ;; (format t "     char = ~A ~&" (aref board x y))
+                                   (setf (aref board x y) #\|
+                                         (aref visited x y) t)
+                                   ;; check either side
+                                   (if (can-continue-p board x y)
+                                       (progn
+                                         (push (cons x y) moves)
+                                         (if (dfs board (1+ x) y moves (1+ depth) visited)
+                                             (return-from dfs t)
+                                             (progn
+                                               (pop moves)
+                                               (setf (aref board x y) #\Space
+                                                     (aref visited x y) nil))))
+                                       (setf (aref board x y) #\Space
+                                             (aref visited x y) nil)))
+
+                                 ;; Follow line
+                                 (if (and (not (aref visited x y))
+                                          (can-continue-p board x y))
+                                     (progn
+                                       (setf (aref visited x y) t) ; 'Visit' the line
+                                       (push (cons x y) moves) ; save move.
+                                       (if (dfs board (1+ x) y moves (1+ depth) visited)
+                                           (return-from dfs t)
+                                           (progn ; else this is not on the solution path
+                                             (pop moves)
+                                             (setf (aref visited x y) nil))))))))
 
                           ;; right (+y)
                           (let ((x x)
                                 (y (1+ y)))
                             ;; (format t "check right")
                             ;; (format t "      X=~2d,Y=~2D~&" x y)
-                            (if (and (valid-board-y-p board y)
-                                     (emptyp board x y))
-                                (progn
-                                  ;; (format t " X=~d,Y=~D & going right ~&" x y)
-                                  ;; (format t "     char = ~A ~&" (aref board x y))
-                                  (setf (aref board x y) #\-
-                                        (aref visited x y) t)
-                                  (if (can-continue-p board x y)
-                                      (progn
-                                        (push (cons x y) moves)
-                                        (if (dfs board x (1+ y) moves (1+ depth) visited)
-                                            (return-from dfs t)
-                                            (progn
-                                              (pop moves)
-                                              (setf (aref board x y) #\Space
-                                                    (aref visited x y) nil))))
-                                      (setf (aref board x y) #\Space
-                                            (aref visited x y) nil)))))
+                            (if  (valid-board-y-p board y)
+                                 (if (emptyp board x y)
+                                     (progn
+                                       ;; (format t " X=~d,Y=~D & going right ~&" x y)
+                                       ;; (format t "     char = ~A ~&" (aref board x y))
+                                       (setf (aref board x y) #\-
+                                             (aref visited x y) t)
+                                       (if (can-continue-p board x y)
+                                           (progn
+                                             (push (cons x y) moves)
+                                             (if (dfs board x (1+ y) moves (1+ depth) visited)
+                                                 (return-from dfs t)
+                                                 (progn
+                                                   (pop moves)
+                                                   (setf (aref board x y) #\Space
+                                                         (aref visited x y) nil))))
+                                           (setf (aref board x y) #\Space
+                                                 (aref visited x y) nil)))
+                                     ;; Follow line
+                                     (if (and (not (aref visited x y))
+                                              (can-continue-p board x y))
+                                         (progn
+                                           (setf (aref visited x y) t) ; 'Visit' the line
+                                           (push (cons x y) moves) ; save move.
+                                           (if (dfs board x (1+ y)  moves (1+ depth) visited)
+                                               (return-from dfs t)
+                                               (progn ; else this is not on the solution path
+                                                 (pop moves)
+                                                 (setf (aref visited x y) nil))))))))
 
                           ;; up (-x)
                           (let ((x (1- x))
                                 (y y))
                             ;; (format t "check up")
                             ;; (format t "    X=~2d,Y=~2D~&" x y)
-                            (if (and (valid-board-x-p board x)
-                                     (emptyp board x y))
-                                (progn
-                                  ;; (format t " X=~d,Y=~D & going up ~&" x y)
-                                  ;; (format t "     char = ~A ~&" (aref board x y))
-                                  (setf (aref board x y) #\|
-                                        (aref visited x y) t)
-                                  (if (can-continue-p board x y)
-                                      (progn
-                                        (push (cons x y) moves)
-                                        (if (dfs board (1- x) y moves (1+ depth) visited)
-                                            (return-from dfs t)
-                                            (progn
-                                              (pop moves)
-                                              (setf (aref board x y) #\Space
-                                                    (aref visited x y) nil))))
-                                      (setf (aref board x y) #\Space
-                                            (aref visited x y) nil)))))
+                            (if (valid-board-x-p board x)
+                                (if (emptyp board x y)
+                                    (progn
+                                      ;; (format t " X=~d,Y=~D & going up ~&" x y)
+                                      ;; (format t "     char = ~A ~&" (aref board x y))
+                                      (setf (aref board x y) #\|
+                                            (aref visited x y) t)
+                                      (if (can-continue-p board x y)
+                                          (progn
+                                            (push (cons x y) moves)
+                                            (if (dfs board (1- x) y moves (1+ depth) visited)
+                                                (return-from dfs t)
+                                                (progn
+                                                  (pop moves)
+                                                  (setf (aref board x y) #\Space
+                                                        (aref visited x y) nil))))
+                                          (setf (aref board x y) #\Space
+                                                (aref visited x y) nil)))
+                                    ;; Follow line
+                                    (if (and (not (aref visited x y))
+                                             (can-continue-p board x y))
+                                        (progn
+                                          (setf (aref visited x y) t) ; 'Visit' the line
+                                          (push (cons x y) moves) ; save move.
+                                          (if (dfs board (1- x) y moves (1+ depth) visited)
+                                              (return-from dfs t)
+                                              (progn ; else this is not on the solution path
+                                                (pop moves)
+                                                (setf (aref visited x y) nil))))))))
 
                           ;; left (-y)
                           (let ((x x)
                                 (y (1- y)))
                             ;; (format t "check left")
                             ;; (format t "      X=~2d,Y=~2D~&" x y)
-                            (if (and (valid-board-y-p board y)
-                                     (emptyp board x y))
-                                (progn
-                                  ;; (format t " X=~d,Y=~D & going left ~&" x y)
-                                  ;; (format t "     char = ~A ~&" (aref board x y))
-                                  (setf (aref board x y) #\-
-                                        (aref visited x y) t)
-                                  (if (can-continue-p board x y)
-                                      (progn
-                                        (push (cons x y) moves)
-                                        (if (dfs board x (1- y) moves (1+ depth) visited)
-                                            (return-from dfs t)
-                                            (progn
-                                              (pop moves)
-                                              (setf (aref board x y) #\Space
-                                                    (aref visited x y) nil))))
-                                      (setf (aref board x y) #\Space
-                                            (aref visited x y) nil)))))
+                            (if (valid-board-y-p board y)
+                                (if (emptyp board x y)
+                                    (progn
+                                      ;; (format t " X=~d,Y=~D & going left ~&" x y)
+                                      ;; (format t "     char = ~A ~&" (aref board x y))
+                                      (setf (aref board x y) #\-
+                                            (aref visited x y) t)
+                                      (if (can-continue-p board x y)
+                                          (progn
+                                            (push (cons x y) moves)
+                                            (if (dfs board x (1- y) moves (1+ depth) visited)
+                                                (return-from dfs t)
+                                                (progn
+                                                  (pop moves)
+                                                  (setf (aref board x y) #\Space
+                                                        (aref visited x y) nil))))
+                                          (setf (aref board x y) #\Space
+                                                (aref visited x y) nil)))
+                                    ;; Follow line
+                                    (if (and (not (aref visited x y))
+                                             (can-continue-p board x y))
+                                        (progn
+                                          (setf (aref visited x y) t) ; 'Visit' the line
+                                          (push (cons x y) moves) ; save move.
+                                          (if (dfs board x (1+ y) moves (1+ depth) visited)
+                                              (return-from dfs t)
+                                              (progn ; else this is not on the solution path
+                                                (pop moves)
+                                                (setf (aref visited x y) nil))))))))
                           ;; (format t "ran out of moves to make, returning...")
                           nil))))))))))
 
@@ -484,10 +853,10 @@ If it is a line, return a 1"
 ;;   (sb-profile:unprofile)
 ;;   (sb-profile:reset)
 ;;   (sb-profile:profile valid-board-x-p valid-board-y-p check-board is-line
-;;                       edge-count can-continue-p apply-x-marks)
+;;                       edge-count can-continue-p apply-hints)
 ;;   (let ((board (read-board "game2.txt"))
 ;;         (moves nil))
-;;     (dfs (apply-x-marks board) 0 0 moves 0))
+;;     (dfs (apply-hints board) 0 0 moves 0))
 ;;   (sb-profile:report)
 ;;   (sb-profile:unprofile))
 
@@ -533,25 +902,6 @@ If it is a line, return a 1"
            (type array board))
   ;; I deem this an okay use of is-line, as I do not need the actual
   ;; direction, just a number. --mhb
-  ;; (let (
-  ;; (count (the fixnum 0))
-  ;; (declare (type fixnum count))
-  ;; )
-  (declare (type list lines))
-  ;; (if (if (valid-board-position-p board x (the fixnum (1+ y)))
-  ;;         (is-line x (the fixnum (1+ y)) board))
-  ;;     (incf count))
-  ;; (if (if (valid-board-position-p board x (the fixnum (1- y)))
-  ;;     (is-line x (the fixnum (1- y)) board))
-  ;;     (incf count))
-  ;; (if (if (valid-board-position-p board  (the fixnum (1+ x)) y)
-  ;;     (is-line (the fixnum (1+ x)) y board))
-  ;;     (incf count))
-  ;; (if (if (valid-board-position-p board (the fixnum (1- x)) y)
-  ;;     (is-line (the fixnum (1- x)) y board))
-  ;;     (incf count))
-  ;; (the fixnum count))
-  ;; (format t "~A~%" lines)
   (loop for value in (list (if (valid-board-position-p board x (the fixnum (1+ y)))
                                (is-line board x (the fixnum (1+ y)) ))
                            (if (valid-board-position-p board x (the fixnum (1- y)))
@@ -562,14 +912,8 @@ If it is a line, return a 1"
                                (is-line board (the fixnum (1- x)) y )))
      with x fixnum = 0
      when value do (setf x (the fixnum (1+ x)))
-     ;; The while might be wanted if we only need to know it is greater
-     ;; than 2 (or some other number) ,rather than the avtual number of edges
-     ;; while (< x 3)
      finally (progn
-               ;; (format t "  ~A lines connected~%" x)
-               (return (the fixnum x))))
-  )
-;;)
+               (return (the fixnum x)))))
 
 ;; nutty attempted macro
 ;; this was never going to work cause I was basing it on something broken
