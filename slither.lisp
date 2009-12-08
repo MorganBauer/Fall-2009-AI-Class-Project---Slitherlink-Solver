@@ -189,7 +189,7 @@ Tips -
   ())
 (defclass edge()
   ((line
-   :initarg :value)
+    :initarg :value)
    (visited
     :initform nil)))
 (defclass vertex()
@@ -361,7 +361,7 @@ Tips -
     ;; first, check the numbers constraints
     (loop
        (loop
-          (if (not (check-space y x view) )
+          (if (not (check-space view x y) )
               (setf return-val nil))
           (incf x 2)
           (when (> x (1- x-limit))
@@ -380,7 +380,7 @@ Tips -
     ;;Check nodes
     (loop
        (loop
-          (if (not (check-node y x view x-limit y-limit))
+          (if (not (check-node view x y x-limit y-limit))
               (setf return-val nil))
           (incf x 2)
           (when (> x (1- x-limit))
@@ -394,23 +394,16 @@ Tips -
            (return)))) ;; end of checking the nodes
     return-val))
 
-(defun check-space (y x view)
+(defun check-space (view x y)
   (declare #.*common-optimization-settings*
            (type fixnum x y))
-  (let ((goal (aref view y x)))
-    ;; (format t "~&Checking Space!!!~&")
+  ;;  (format t "~&You LOSE~&")
+  (let ((goal (aref view x y)))
+    ;;  (format t "~&Checking Space!!!~&")
     (if (numberp goal)
         (progn
-          (let ((current (loop for value in (list (is-line (1+ y) x view)
-                                                  (is-line (1- y) x view)
-                                                  (is-line y (1+ x) view)
-                                                  (is-line y (1- x) view))
-                            with num-lines fixnum = 0
-                            when value do (setf num-lines (1+ num-lines))
-                            finally (return num-lines))))
-            (declare (type fixnum current))
-            ;;(format t "goal = ~D current = ~D" goal current)
-            (if (= current goal) T nil)))
+          ;; (format t "goal = ~D current = ~D" goal current)
+          (if (= (edge-count view x y) goal) T nil))
         T)))
 
 
@@ -422,7 +415,8 @@ Tips -
 ;; Here is a bit more tricky.  Gotta see where we are.
 ;; return true if current matches either goal or goal-two
 ;; Ignore the corresponding side if the number is negative or out-of-bounds
-(defun check-node (y x board x-limit y-limit)
+(defun check-node (board x y x-limit y-limit)
+
   "Return true if there is an out-degree of 0 or 2. This means that the node is valid."
   (declare #.*common-optimization-settings*
            (type fixnum x y))
@@ -430,32 +424,33 @@ Tips -
         ;;(y-limit (- (array-dimension board +Y+) 1))
         (current 0))
     (declare (type fixnum x-limit y-limit current))
-    ;;(format t "~&Checking Node!!!~&")
+    ;; (format t "~&Checking Node!!YESH!~&")
     ;; if the x value is NOT less than zero, do the math.
     (if (not (< (1- x) 0))
-        (if (is-line y (the fixnum (1- x)) board)
+        (if (is-line board (the fixnum (1- x)) y )
             (incf current)))
     (if (not (< (1- y) 0))
-        (if (is-line (the fixnum (1- y)) x board)
+        (if (is-line board x (the fixnum (1- y) ) )
             (incf current)))
     (if (not (> (1+ x) (1- x-limit)))
-        (if (is-line y (the fixnum (1+ x)) board)
+        (if (is-line board (the fixnum (1+ x)) y)
             (incf current)))
     (if (not (> (1+ y) (1- y-limit)))
-        (if (is-line (the fixnum (1+ y)) x board)
+        (if (is-line board x (the fixnum (1+ y)))
             (incf current)))
     (if (or (= current +goal+) (= current +goal-two+) ) T nil)))
 
 ;;;; is-line
 ;; Pass in the position in the array
 ;; If it is a line, return a 1
-(defun is-line (y x view)
+(defun is-line (view x y)
   (declare #.*common-optimization-settings*
-           (type fixnum x y))
+           (type fixnum x y)
+           (type array view))
   "Pass in the position in the array
 If it is a line, return a 1"
   ;; (format t "~&is-line!!!~&")
-  (let ((char (aref view y x)))
+  (let ((char (aref view x y)))
     (declare (type character char))
     (case char
       (#\| t)
@@ -465,10 +460,15 @@ If it is a line, return a 1"
 (define-test checker
   (let ((solution (read-board-solution "game1solution.txt")))
     (assert-true (check-board solution))
+
     (setf solution (read-board-solution "game2solution.txt"))
     (assert-true (check-board solution))
+    ;; Lot's of filled faces.
     (setf solution (read-board-solution "game2solutionFilled.txt"))
-    (assert-true (check-board solution))))
+    (assert-true (check-board solution))
+    ;; Can it check asymmetric boards?
+    (assert-false (check-board (read-board "game3.txt")))
+    (assert-false (check-board (read-board "board15.txt")))))
 
 
 (defun read-board-solution (pathname)
