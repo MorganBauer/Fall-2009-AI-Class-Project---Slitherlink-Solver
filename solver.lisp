@@ -51,7 +51,6 @@
   (let ((starting-time (get-universal-time)) ; remember starting time
         (ending-time nil)
         (moves nil)) ; create empty list for moves
-    (setf *visited* (make-array (array-dimensions board) :initial-element nil))
     ;; when dfs'ing on dots, we can go from 0 to (1- dimension-limit) by 2
     ;; Perhaps instead of picking an arbitrary starting position,
     ;; start at one of the squares that
@@ -62,28 +61,15 @@
     ;; mhb-- This should preferably be passed in to another function
     ;; rather than just being used for it's side effects, but I do not
     ;; think that we need the original board after this, so it is okay.
-    (apply-hints board)
 
-    ;; (find-a-plausible-starting-location-then-dfsolve) ; see below
-
-    (loop for x fixnum from 0 to (array-dimension board +X+) by 2
-       :do (loop for y fixnum from 0 to (array-dimension board +Y+) by 2
-              ;; make a function pass it in.
-              do (progn
-                   (format t "~&dfs at x:~A,y:~A~&" x y)
-                   (if (dfs board x y moves) ; if it returns true, we have found a solutio
-                       (progn
-                         (setf ending-time (get-universal-time))
-                         (format t "we have found the solution")
-                         (print-board board)
-                         (print-moves (nreverse moves))
-                         (format t "~&Solve took ~D seconds" (- ending-time
-                                                                starting-time))
-                         t))))))
-  ;; The compiler complains that this code cannot be reached. which is true. Heh. --mhb
-  ;;(format t "~&holy moly, there is no solution!~%This should not be possible!~&")
-  )
-
+    (find-a-plausible-starting-location-then-dfsolve (apply-hints (apply-hints board)) moves) ; see below
+    (setf ending-time (get-universal-time))
+    (format t "We have found the solution!~&")
+    (print-board board)
+    (print-moves (nreverse moves))
+    (format t "~&Solve took ~D seconds" (- ending-time
+                                           starting-time))
+    t))
 ;; (defmacro loop-over-vertexes (board)
 ;;   (loop for x fixnum from 0 to (array-dimension board +X+) by 2
 ;;      :do (loop for y fixnum from 0 to (array-dimension board +Y+) by 2
@@ -134,70 +120,70 @@
                      (aref board (+ x 1) (- y 2)) #\X))))
 
     ;; test each direction
-      ;; Down
-      (let ((x (+ x 2))
-            (y y))
-        (if (valid-board-x-p board x)
-            (let ((number (aref board x y)))
-              (if (numberp (aref board x y))
-                  (case number  ;check which number, do something with it.
-                    (3 (progn
-                         (setf (aref board (1+ x) y) #\-
-                               (aref board x (1+ y)) #\|
-                               (aref board x (1- y)) #\|)))
-                    (2 t);(progn
-                         ;(setf (aref board (1+ x) y) #\-)))
-                    (1 t)
-                    (0 t))
-                  ))
-            ))
-      ;; right (+y)
-      (let ((x x)
-            (y (+ y 2)))
-        (if (valid-board-y-p board y)
-            (let ((number (aref board x y)))
-              (if (numberp (aref board x y))
-                  (case number  ;check which number, do something with it.
-                    (3 (progn
-                         (setf (aref board (1+ x) y) #\-
-                               (aref board (1- x) y) #\-
-                               (aref board x (1+ y)) #\|)))
+    ;; Down
+    (let ((x (+ x 2))
+          (y y))
+      (if (valid-board-x-p board x)
+          (let ((number (aref board x y)))
+            (if (numberp (aref board x y))
+                (case number  ;check which number, do something with it.
+                  (3 (progn
+                       (setf (aref board (1+ x) y) #\-
+                             (aref board x (1+ y)) #\|
+                             (aref board x (1- y)) #\|)))
+                  (2 t);(progn
+                                        ;(setf (aref board (1+ x) y) #\-)))
+                  (1 t)
+                  (0 t))
+                ))
+          ))
+    ;; right (+y)
+    (let ((x x)
+          (y (+ y 2)))
+      (if (valid-board-y-p board y)
+          (let ((number (aref board x y)))
+            (if (numberp (aref board x y))
+                (case number  ;check which number, do something with it.
+                  (3 (progn
+                       (setf (aref board (1+ x) y) #\-
+                             (aref board (1- x) y) #\-
+                             (aref board x (1+ y)) #\|)))
 
-                    (2 t);(progn
-                       ;;  (setf (aref board x (1+ y)) #\|)))
-                    (1 t)
-                    (0 t))))))
-      ;; up (-x)
-      (let ((x (- x 2))
-            (y y))
-        (if (valid-board-x-p board x)
-            (let ((number (aref board x y)))
-              (if (numberp (aref board x y))
-                  (case number  ;check which number, do something with it.
-                    (3 (progn
-                         (setf (aref board (1- x) y) #\-
-                               (aref board x (1+ y)) #\|
-                               (aref board x (1- y)) #\|)))
-                    (2 t);(progn
-                         ;(setf (aref board (1- x) y) #\-)))
-                    (1 t)
-                    (0 t))))))
-      ;; left (-y)
-      (let ((x x)
-            (y (- y 2)))
-        (if (valid-board-y-p board y)
-            (let ((number (aref board x y)))
-              (if (numberp (aref board x y))
-                  (case number  ;check which number, do something with it.
-                    (3 (progn
-                         (setf (aref board (1+ x) y) #\-
-                               (aref board (1- x) y) #\-
-                               (aref board x (1- y)) #\|)))
+                  (2 t);(progn
+                  ;;  (setf (aref board x (1+ y)) #\|)))
+                  (1 t)
+                  (0 t))))))
+    ;; up (-x)
+    (let ((x (- x 2))
+          (y y))
+      (if (valid-board-x-p board x)
+          (let ((number (aref board x y)))
+            (if (numberp (aref board x y))
+                (case number  ;check which number, do something with it.
+                  (3 (progn
+                       (setf (aref board (1- x) y) #\-
+                             (aref board x (1+ y)) #\|
+                             (aref board x (1- y)) #\|)))
+                  (2 t);(progn
+                                        ;(setf (aref board (1- x) y) #\-)))
+                  (1 t)
+                  (0 t))))))
+    ;; left (-y)
+    (let ((x x)
+          (y (- y 2)))
+      (if (valid-board-y-p board y)
+          (let ((number (aref board x y)))
+            (if (numberp (aref board x y))
+                (case number  ;check which number, do something with it.
+                  (3 (progn
+                       (setf (aref board (1+ x) y) #\-
+                             (aref board (1- x) y) #\-
+                             (aref board x (1- y)) #\|)))
 
-                    (2 t);(progn
-                        ; (setf (aref board x (1- y)) #\|)))
-                    (1 t)
-                    (0 t))))))))
+                  (2 t);(progn
+                                        ; (setf (aref board x (1- y)) #\|)))
+                  (1 t)
+                  (0 t))))))))
 
 (defun corner-p (board x y)
   (or (and (= x 1) (= y 1))
@@ -276,8 +262,7 @@
                                         ;(3 t)
                   (2 t)
                   (1 t)
-                  (0 t))))))
-    ))
+                  (0 t))))))))
 
 (defun hint-ones (board x y)
   (progn
@@ -361,7 +346,7 @@
     visited
     moves
     ;;(print-board board))
-  (assert-true t)))
+    (assert-true t)))
 
 (defun hint-twos (board x y)
   (progn ;; test each direction
@@ -443,9 +428,7 @@
   ;; Then, worst case scenario, two dfs's will have to be done,
   ;; starting from opposite corners.
   (let ((start-pt-x nil)
-        (start-pt-y nil)
-        (starting-time (get-universal-time ))
-        (ending-time 0))
+        (start-pt-y nil))
                                         ; Check for 3's on the board
     (loop for x fixnum from 1 to (- (array-dimension board +X+) 2) by 2
        :do (loop for y fixnum from 1 to (- (array-dimension board +Y+) 2) by 2
@@ -492,27 +475,11 @@
     ;; square with a number in it.  It favors 3s over 2s, and 2s over 1s.  It overlooks spaces
     ;; and zeroes.
     ;; DFS from the upper-left corner of the number...
-    (if (dfs board (- start-pt-x 1) (- start-pt-y 1)  moves)
+    (if (dfs board (- start-pt-x 1) (- start-pt-y 1)  moves 0)
+        (return-from find-a-plausible-starting-location-then-dfsolve t)
         ;;(zomg-hax-win board)
-        (progn
-          (setf ending-time (get-universal-time))
-          (format t "we have found the solution")
-          (print-board board)
-          (print-moves (nreverse moves))
-          (format t "~&Solve took ~D seconds" (- ending-time
-                                                 starting-time)))
         ;; else (ie you don't win) DFS from the bottom-right corner...
-        (if (dfs board (+ start-pt-x 1) (+ start-pt-y 1)  moves)
-            ;;            (zomg-hax-win board)
-            (progn
-              (setf ending-time (get-universal-time))
-              (format t "we have found the solution")
-              (print-board board)
-              (print-moves (nreverse moves))
-              (format t "~&Solve took ~D seconds" (- ending-time
-                                                     starting-time)))
-
-            ()))))
+        (dfs board (+ start-pt-x 1) (+ start-pt-y 1)  moves 0))))
 
 ;; Are we having fun yet?
 ;; I wish to do this recursively. It may make the code a little easier, but perhaps
@@ -541,7 +508,8 @@
         ;; (format t "~2%")
         (if (check-board board)
             ;; (progn (format t "~10%HOORAY~10%")
-            (return-from dfs board))
+            (progn (print-moves moves)
+                   (return-from dfs board)))
         (progn
           ;; (print-board board)
           (let ((edge-count (edge-count board x y)))
@@ -1002,34 +970,9 @@ If it is a line, return a 1"
 ;; (aref board (1- x) y)
 
 ;; --- more notes... ---
-;; Root behavior will be a chain of ifs...
-;; if (can go up && !came from up)  {go up}
-;; else if (can go right && ! came from right) {go right}
-;; ...
-;; at the end:
-;; else {go back}
-;; - Going backwards:
-;; Since dfs only checks each direction once per node, one doesn't
-;; necessarily have to remember each direction you came from.
-;; When you reach a line (provided the node has only one line coming from it)
-;; then you've exhausted all possibilities, so back up.
-;; - Can go X :
-;; Only checks the LINE COUNT of the affected squares.  If it does not EXCEED the
-;; restraint, then it is a legal search-move.
-;; If the space already is occupied, that is the direction you came from.
-;; - Finding the solution:
-;; If your current node has two lines coming from it, and it passed the "can go x" function,
-;; run check-board.  it'll keep board-checking to a minimum.  if yes, you win.  If not,
-;; IMMEDIATELY back up.
 
-;; --- Placeholder ---
-;; For when the AI wins.
-(defun zomg-hax-win (board)
-  (if board
-      (format t "ZOMG HAX YOU WIN")))
-
-;; ----STUPID idea----
-;; What I want to do is rank the three (or less) available
+;; ----Heuristic idea, thought up but not implemented----
+;; While DFSing, we could rank the three (or less) available
 ;; moves by the probability that there will
 ;; be a line...  So cells with a 3 get a higher priority over
 ;; cells with just a 1 or 2 adjacent to them.
@@ -1039,12 +982,7 @@ If it is a line, return a 1"
 ;; that edge's adjacent cells - there will be two for each possible
 ;; move.  So an edge with two [3]s next to it will get higher priority
 ;; than a [2] and a blank.
-;; Then you can STEAL FIZZY LIFTING DRINKS - and BUMP into the CEILING
-;; that has to be WASHED and STERILIZED so you GET NOTHING!
-;; You LOSE!
-;; GOOD DAY SIR!
-;; ----/STUPID idea----
-;; I said GOOD DAY!
+;; --- /Idea ---
 
 ;; we can add back tracking guides in later, such as if it was next to a 3 and four spaces would be covered from the expansion, go back.
 

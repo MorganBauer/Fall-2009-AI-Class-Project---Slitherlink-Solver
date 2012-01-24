@@ -1,34 +1,38 @@
-by Morgan Bauer and Dana Preble
+Morgan Bauer and Dana Preble
 
-Load by
-(load "loader")
+At the lisp prompt load by
 
-On a linux-computer with clisp, you may run by
-
-    ./run
-
-however you will not land in the debugger if there is an error; itwill just kick you back to the command line.
+    (load "loader")
 
 then do 
-(in-package slither)
-(slither)
-OR
-(slither:slither)
-to run
 
+    (in-package slither)
+    (slither) 
 
+To start the game.
 
 Placing a move puts a line there
 Placing it again removes it.
 
-
 Typing 'quit' while playing the game will exit back to the menu.
 
-Do (slither:run-tests) to test necessary functions.
+Typing 'solve' while playing the game will solve the currently loaded board.
 
-can load from a file specified by the user. loads automatically a basic game.
+Do (run-tests) to test necessary functions.
+
+It loads automatically the basic 2x2 game.
+
+It can load from a file specified by the user.
+
+
+To load a game, do
+
+(slither)
+y at prompt
+n at prompt
+type name of file at prompt
 
 
 Two included libraries were obtained
-    lisp-unit for unit testing, from http://www.cs.northwestern.edu/academics/courses/325/readings/lisp-unit.html
+    lisp-unit for unit testing, from     http://www.cs.northwestern.edu/academics/courses/325/readings/lisp-unit.html
     split-sequence for parsing, from http://ftp.linux.org.uk/pub/lisp/experimental/cclan/split-sequence.tar.gz

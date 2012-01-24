@@ -5,10 +5,10 @@
 (eval-when (:compile-toplevel)
   (defparameter *common-optimization-settings*
     '(optimize
-      (speed 0)
-      (safety 3)
+      (speed 3)
+      (safety 0)
       (space 0)
-      (debug 3)
+      (debug 0)
       (compilation-speed 0))
     "The common optimization settings used by declaration expressions."))
 
@@ -16,7 +16,7 @@
 (defconstant +Y+ (the fixnum 1))
 
 
-;; (declaim (inline is-line check-space check-node is-vertex? is-face?))
+(declaim (inline is-line check-space check-node is-vertex? is-face?))
 
 (defun slither ()
   "Game goes here"
@@ -58,7 +58,7 @@ Tips -
                (format t "Quitting current game")
                (return-from game-loop))
           do (when (string-equal "solve" (string-trim " " move))
-               (format t "Solving")
+               (format t "Solving...~%")
                (time (solve board))
                (return-from game-loop))
           do (setf move (parse-move move board))
@@ -222,9 +222,9 @@ Tips -
        finally (return lines))))
 
 (define-test slurp-board
-  (assert-equal '("33"
-                  "  ")
-                (slurp-file "game1.txt"))
+    (assert-equal '("33"
+                    "  ")
+                  (slurp-file "game1.txt"))
   (assert-equal   '("nnn20"
                     "232n2"
                     "21nn3"
@@ -458,17 +458,17 @@ If it is a line, return a 1"
       (#\Space nil))))
 
 (define-test checker
-  (let ((solution (read-board-solution "game1solution.txt")))
-    (assert-true (check-board solution))
+    (let ((solution (read-board-solution "game1solution.txt")))
+      (assert-true (check-board solution))
 
-    (setf solution (read-board-solution "game2solution.txt"))
-    (assert-true (check-board solution))
-    ;; Lot's of filled faces.
-    (setf solution (read-board-solution "game2solutionFilled.txt"))
-    (assert-true (check-board solution))
-    ;; Can it check asymmetric boards?
-    (assert-false (check-board (read-board "game3.txt")))
-    (assert-false (check-board (read-board "board15.txt")))))
+      (setf solution (read-board-solution "game2solution.txt"))
+      (assert-true (check-board solution))
+      ;; Lot's of filled faces.
+      (setf solution (read-board-solution "game2solutionFilled.txt"))
+      (assert-true (check-board solution))
+      ;; Can it check asymmetric boards?
+      (assert-false (check-board (read-board "game3.txt")))
+      (assert-false (check-board (read-board "board15.txt")))))
 
 
 (defun read-board-solution (pathname)
